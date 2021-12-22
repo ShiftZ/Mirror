@@ -125,25 +125,27 @@ namespace Reflection
 
 			name = meta->Name();
 			type = &typeid(Type);
-			if constexpr (is_reflected<Type>) ref_class = Type::Class::GetClass();
+
+			if constexpr (IsReflected<Type>)
+				ref_class = Type::Class::GetClass();
 
 			if constexpr (is_convertible_v<decltype(&PropertyMeta::Access::Get), Getter>)
 				getter = &PropertyMeta::Access::Get;
 
-			if constexpr (IsCopyAssignable<Type> && is_convertible_v<decltype(&PropertyMeta::Access::Set), Setter>)
+			if constexpr (CopyAssignable<Type> && is_convertible_v<decltype(&PropertyMeta::Access::Set), Setter>)
 				setter = &PropertyMeta::Access::Set;
 
 			if constexpr (is_move_assignable_v<Type> && is_convertible_v<decltype(&PropertyMeta::Access::Move), Mover>)
 				mover = &PropertyMeta::Access::Move;
 
-			if constexpr (IsCopyConstructible<Type>)
+			if constexpr (CopyConstructible<Type>)
 				getany = [](void* ptr) { return make_any<Type>(*(Type*)ptr); };
 
 			castany = [](const any& value) -> void* { return (void*)&any_cast<const Type&>(value); };
 			copy = PropertyMeta::Scope::Class::Copy;
 
-			copy_constructible = IsCopyConstructible<Type>;
-			copy_assignable = IsCopyAssignable<Type>;
+			copy_constructible = CopyConstructible<Type>;
+			copy_assignable = CopyAssignable<Type>;
 
 			meta_text = PropertyMeta::Access::Text();
 		}

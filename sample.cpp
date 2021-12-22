@@ -10,7 +10,7 @@ enum class Color { ENUM(Color, Black, White, Ginger) }; // built-in enum reflect
 enum class Expression { Insolent, Shameless, Begging, Fearsome };
 XENUM(Expression, Insolent, Shameless, Begging, Fearsome); // external enum reflection
 
-class Animal : public Reflected
+class Animal : public Reflected // this inheritance is not obligatory, it just makes GetClass() method virtual
 {
 	CLASS(Animal)
 
@@ -135,7 +135,7 @@ int main()
     bool good_girl = good_pet->GetValue<bool>(alice); // property has a virtual getter overriden in Cat class
     cout << alice.name << " is a " << (good_girl ? "good" : "bad") << " girl\n";
 
-    const Property* furious = cat_class->GetProperty("furious"); 
+    const Property* furious = cat_class->GetProperty("furious");
     if (furious->GetValue<bool>(alice)) // getting value of a virtual property
 		cout << alice.name << " is furious\n";
 
@@ -143,7 +143,6 @@ int main()
     cout << alice.name << " expresses " << Enum<Expression>::ToString(expression) << "ness\n"; // convert enum value to a string
 
     cout << "\nFun fact:\n" << furious->meta_text;
-
 
     return 0;
 }

@@ -2,6 +2,7 @@
 
 #include <typeindex>
 #include <type_traits>
+#include <format>
 
 #define REFLECTION_METHOD_META(name, native_name, ...) \
 	xproperty_##name##_type(); \
@@ -97,7 +98,7 @@ namespace Reflection
 		auto Invoke(const Object& obj, Args ... args) const
 		{
 			if (signature != typeid(Signature))
-				throw Exception("Signature mismatch calling '%s' in '%s'", name, scope.name.data());
+				throw logic_error(format("Signature mismatch calling '{}' in '{}'", name, scope.name));
 			return Invoke((Signature*)nullptr, GetDomain(obj), std::forward<Args>(args)...);
 		}
 

@@ -182,6 +182,9 @@ namespace Reflection
 		// Type name
 		string_view Name() const { return name; }
 
+		// const char* name
+		const char* RawName() const { return name.data(); }
+
 		// Number of properties
 		int PropertiesNum() const { return (int)properties.size(); }
 

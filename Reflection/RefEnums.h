@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <optional>
 #include <cassert>
+#include <format>
 
 #include "RefTools.h"
 
@@ -30,7 +31,7 @@ namespace Reflection
 	struct Enum
 	{
 		string_view name;
-		vector<string_view> names;
+		vector<string> names;
 		vector<Type> values;
 		unordered_map<string_view, Type> to_enum;
 		unordered_map<Type, string_view> to_string;
@@ -66,7 +67,7 @@ namespace Reflection
 				off = text.find_first_not_of(", ", off);
 				if (off == string::npos) break;
 				next = text.find_first_of(" =,", off);
-				string_view name = text.substr(off, next != string::npos ? next - off : string::npos);
+				string name(text.substr(off, next != string::npos ? next - off : string::npos));
 				off = text.find(',', next);
 
 				names.push_back(name);
@@ -89,16 +90,15 @@ namespace Reflection
 			Enum& meta = Instance();
 			auto str = meta.to_string.find(value);
 			if (str == meta.to_string.end())
-				throw Exception("%s: Invalid ToString conversion of (%d)", meta.name.data(), int(value));
+				throw std::logic_error(std::format("{} enum: invalid ToString conversion of ({})", meta.name, int(value)));
 			return str->second;
 		}
 
 		// Conver value to string. Doesn't throw.
 		static optional<string_view> GetString(Type value)
 		{
-			Enum& meta = Instance();
-			auto str = meta.to_string.find(value);
-			return (str != meta.to_string.end()) ? optional(str->second) : std::nullopt;
+			auto str = Instance().to_string.find(value);
+			return (str != Instance().to_string.end()) ? optional(str->second) : std::nullopt;
 		}
 
 		// Get value by name. Throws if name is invalid
@@ -107,23 +107,21 @@ namespace Reflection
 			Enum& meta = Instance();
 			auto val = meta.to_enum.find(name);
 			if (val == meta.to_enum.end())
-				throw Exception("%s: Invalid ToValue conversion of (%s)", meta.name.data(), name.data());
+				throw std::logic_error(std::format("{} enum: invalid ToValue conversion of '{}'", meta.name, name));
 			return val->second;
 		}
 
 		// Get value by name. Doesn't throw
 		static optional<Type> GetValue(string_view name)
 		{
-			Enum& meta = Instance();
-			auto val = meta.to_enum.find(name);
-			return (val != meta.to_enum.end()) ? optional(val->second) : std::nullopt;
+			auto val = Instance().to_enum.find(name);
+			return (val != Instance().to_enum.end()) ? optional(val->second) : std::nullopt;
 		}
 
 		// Check if name is valid
 		static bool IsValue(string_view name)
 		{
-			Enum& meta = Instance();
-			return meta.to_enum.find(name) != meta.to_enum.end();
+			return Instance().to_enum.contains(name);
 		}
 
 		// Get name of the enum
@@ -132,15 +130,19 @@ namespace Reflection
 		// Get span of enum value names
 		static auto GetNames()
 		{
-			Enum& meta = Instance();
-			return span(meta.names.begin(), meta.names.end());
+			return span(Instance().names.begin(), Instance().names.end());
 		}
 
 		// Get span of enum values
 		static auto GetValues()
 		{
-			Enum& meta = Instance();
-			return span(meta.values.begin(), meta.values.end());
+			return span(Instance().values.begin(), Instance().values.end());
+		}
+
+		// Get pairs of {name, value}
+		static auto GetPairs()
+		{
+			return views::all(Instance().to_enum);
 		}
 
 		// Get number of enum values
