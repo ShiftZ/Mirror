@@ -4,7 +4,7 @@
 #include <filesystem>
 
 #include "RefExpress.h"
-#include "LuaBind.h"
+#include "LuaBind.hpp"
 
 using namespace std;
 using namespace Reflection;
