@@ -490,9 +490,9 @@ struct LuaValue<Type>
 };
 
 template<typename Type, template<typename...> class Array, typename... Others>
-	requires (Reflection::IsSTLContainer<Array<Type, Others...>> &&	
+	requires (Reflection::StlContainer<Array<Type, Others...>> &&	
 			  !std::is_same_v<Array<Type, Others...>, std::string> &&
-			  !Reflection::IsSTLMap<Array<Type, Others...>>)
+			  !Reflection::StlMap<Array<Type, Others...>>)
 struct LuaValue<Array<Type, Others...>>
 {
 	static void Push(lua_State* lua, const Array<Type, Others...>& ar) requires LuaPushable<Type>
@@ -537,7 +537,7 @@ struct LuaValue<Array<Type, Others...>>
 };
 
 template<typename Key, typename Value, template<typename...> class Map, typename... Others>
-	requires Reflection::IsSTLMap<Map<Key, Value, Others...>>
+	requires Reflection::StlMap<Map<Key, Value, Others...>>
 struct LuaValue<Map<Key, Value, Others...>>
 {
 	static void Push(lua_State* lua, const Map<Key, Value, Others...>& map) requires LuaPushable<Key> && LuaPushable<Value>

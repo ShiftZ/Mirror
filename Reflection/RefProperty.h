@@ -81,16 +81,16 @@ namespace Reflection
 {
 	using namespace std;
 
-	using Getter = void* (*)( void* );
-	using Setter = void (*)( void*, void* );
-	using Mover = void (*)( void*, void* );
+	using Getter = void* (*)(void*);
+	using Setter = void (*)(void*, void*);
+	using Mover = void (*)(void*, void*);
 
 	class Property
 	{
 	protected:
-		void* (*caster)( void* ) = nullptr;
-		void* (*castany)( const any& );
-		Property* (*copy)( const Property* );
+		void* (*caster)(void*) = nullptr;
+		void* (*castany)(const any&);
+		Property* (*copy)(const Property*);
 
 		friend class Class;
 
@@ -139,7 +139,7 @@ namespace Reflection
 				mover = &PropertyMeta::Access::Move;
 
 			if constexpr (CopyConstructible<Type>)
-				getany = [](void* ptr) { return make_any<Type>(*(Type*)ptr); };
+				getany = [](void* ptr){ return make_any<Type>(*(Type*)ptr); };
 
 			castany = [](const any& value) -> void* { return (void*)&any_cast<const Type&>(value); };
 			copy = PropertyMeta::Scope::Class::Copy;
