@@ -10,6 +10,7 @@ using namespace std;
 using namespace Reflection;
 
 enum class Color { ENUM(Color, Black, White, Ginger) }; // built-in enum reflection
+
 enum class Expression { Insolent, Shameless, Begging, Fearsome };
 XENUM(Expression, Insolent, Shameless, Begging, Fearsome); // external enum reflection
 
