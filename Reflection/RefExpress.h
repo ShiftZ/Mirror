@@ -4,6 +4,7 @@
 #include "RefMethod.h"
 #include "RefEnums.h"
 
+// default property and method class injection
 #define CLASS(name, ...) REFLECTION_CLASS(Reflection::Property, Reflection::Method, name, __VA_ARGS__)
 #define STRUCT(name, ...) REFLECTION_STRUCT(Reflection::Property, Reflection::Method, name, __VA_ARGS__)
 #define ENUM(type, ...) REFLECTION_ENUM(type, __VA_ARGS__)

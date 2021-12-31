@@ -19,7 +19,7 @@ class Animal : public Reflected
 	LUA_CLASS(Animal)
 
 public:
-    int PROPERTY(lifes) = 1;
+	int PROPERTY(lifes) = 1;
 };
 
 class Furious : public virtual Animal
@@ -27,14 +27,14 @@ class Furious : public virtual Animal
 	LUA_CLASS(Furious)
 
 public:
-    bool PROPERTY(bites) = true;
-    bool PROPERTY(scratches) = true;
-    bool VPROPERTY(furious, GETTER(GetFurious) SETTER(SetFurious) METATXT("Virtual properties do not physically exist"));
+	bool PROPERTY(bites) = true;
+	bool PROPERTY(scratches) = true;
+	bool VPROPERTY(furious, GETTER(GetFurious) SETTER(SetFurious) METATXT("Virtual properties do not physically exist"));
 
 public:
-    void SetFurious(bool furious) { bites = scratches = furious; }
-    bool GetFurious() { return bites && scratches; }
-    void VMETHOD(Hiss)() { cout << "Hssss\n"; }
+	void SetFurious(bool furious) { bites = scratches = furious; }
+	bool GetFurious() { return bites && scratches; }
+	void VMETHOD(Hiss)() { cout << "Hssss\n"; }
 };
 
 class Pet : public virtual Animal
@@ -42,12 +42,12 @@ class Pet : public virtual Animal
 	LUA_CLASS(Pet)
 
 public:
-    string PROPERTY(name);
-    bool PROPERTY(good_pet, SETTER(SetGoodPet) GETTER(IsGoodPet)) = false;
+	string PROPERTY(name);
+	bool PROPERTY(good_pet, SETTER(SetGoodPet) GETTER(IsGoodPet)) = false;
 
 public:
-    virtual void SetGoodPet(bool value) { good_pet = value; }
-    virtual bool IsGoodPet() { return good_pet; }
+	virtual void SetGoodPet(bool value) { good_pet = value; }
+	virtual bool IsGoodPet() { return good_pet; }
 
 	void METHOD(Purr)() { cout << "Purrr-purrr\n"; }
 };
@@ -57,11 +57,11 @@ class Cat : public Furious, public Pet
 	LUA_CLASS(Cat, MULTIBASE(Furious, Pet))
 
 public:
-    struct Snout : Reflected
-    {
-	    LUA_STRUCT(Snout)
-        Expression PROPERTY(expression);
-    };
+	struct Snout : Reflected
+	{
+		LUA_STRUCT(Snout)
+		Expression PROPERTY(expression);
+	};
 
 	struct Tail : Reflected
 	{
@@ -70,12 +70,12 @@ public:
 	};
 
 public:
-    Snout PROPERTY(snout);
-    Color PROPERTY(color);
-    Tail PROPERTY(tail);
+	Snout PROPERTY(snout);
+	Color PROPERTY(color);
+	Tail PROPERTY(tail);
 
 public:
-    Cat() { lifes = 9; }
+	Cat() { lifes = 9; }
 
 	string METHOD(Meow)(int length)
 	{
@@ -83,56 +83,56 @@ public:
 	}
 
 	void Hiss() override
-    {
-	    Furious::Hiss();
-        snout.expression = Expression::Fearsome;
-    }
+	{
+		Furious::Hiss();
+		snout.expression = Expression::Fearsome;
+	}
 
 	void SetGoodPet(bool good) override
-    {
-	    Pet::SetGoodPet(good);
-        good ? Purr() : Hiss();
-        bites = scratches = !good;
-    }
+	{
+		Pet::SetGoodPet(good);
+		good ? Purr() : Hiss();
+		bites = scratches = !good;
+	}
 
-    bool IsGoodPet() override { return true; } // there is no bad cats
+	bool IsGoodPet() override { return true; } // there is no bad cats
 };
 
 Cat* cat = nullptr;
 
 int main()
 {
-    lua_State* lua = luaL_newstate();
+	lua_State* lua = luaL_newstate();
 
 	LuaBindSetter(lua, LuaSetter);
 	LuaBindGetter(lua, LuaGetter);
 	LuaBindEqual(lua, LuaEqual);
 	LuaBindDestructor(lua, LuaDestructor);
-    AddEnum<Color, Expression>(lua);
+	AddEnum<Color, Expression>(lua);
 
-    luaL_requiref(lua, "_G", luaopen_base, 1);
-    lua_settop(lua, 0);
+	luaL_requiref(lua, "_G", luaopen_base, 1);
+	lua_settop(lua, 0);
 
-    auto get_cat = [](lua_State* lua)
-    {
-        unique_ptr cat = make_unique<Cat>();
-        ::cat = cat.get();
-	    LuaPush(lua, move(cat));
-        return 1;
-    };
+	auto get_cat = [](lua_State* lua)
+	{
+		unique_ptr cat = make_unique<Cat>();
+		::cat = cat.get();
+		LuaPush(lua, move(cat));
+		return 1;
+	};
 
 	lua_pushcfunction(lua, lua_CFunction(get_cat));
 	lua_setglobal(lua, "GetCat");
 
-    if (luaL_loadfile(lua, "luabind_sample.lua") != 0)
-    {
-	    cout << "'luaL_loadfile' failed\n";
-        return 0;
-    }
+	if (luaL_loadfile(lua, "luabind_sample.lua") != 0)
+	{
+		cout << "'luaL_loadfile' failed\n";
+		return 0;
+	}
 
 	lua_call(lua, 0, 0);
 
 	lua_close(lua);
 
-    return 0;
+	return 0;
 }
