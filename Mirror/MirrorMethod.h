@@ -99,7 +99,7 @@ namespace Mirror
 		{
 			if (signature != typeid(Signature))
 				throw logic_error(format("Signature mismatch calling '{}' in '{}'", name, scope.name));
-			return Invoke((Signature*)nullptr, GetDomain(obj), std::forward<Args>(args)...);
+			return Invoke((Signature*)nullptr, GetScope(obj), std::forward<Args>(args)...);
 		}
 
 		template<typename Return, typename Object, typename... Args>
@@ -109,7 +109,7 @@ namespace Mirror
 		}
 
 		template<typename Type>
-		void* GetDomain(const Type& obj) const
+		void* GetScope(const Type& obj) const
 		{
 			void* ptr = obj.GetThis();
 			return caster ? caster(ptr) : ptr;

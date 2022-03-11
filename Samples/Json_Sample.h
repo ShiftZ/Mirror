@@ -39,7 +39,7 @@ struct JsonMetaData : virtual Property // virtual inheritance to make it possibl
 	}
 };
 
-template<IsReflected Type>
+template<Mirrored Type>
 struct JsonReadWrite<Type>
 {
 	static void Write(const Type& obj, JsonBox::Value& jval)

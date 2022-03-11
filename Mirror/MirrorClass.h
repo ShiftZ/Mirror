@@ -251,8 +251,6 @@ namespace Mirror
 		template<typename PropertyType>
 		auto GetProperties(type_index type)
 		{
-			auto transform = ranges::views::transform([](const Property* p){ return dynamic_cast<PropertyType*>(p); });
-			auto filter = views::filter([](const PropertyType* p){ return p != nullptr; });
 			return GetProperties(type) | ranges::views::transform([](const Property* p){ return dynamic_cast<PropertyType*>(p); });
 		}
 
@@ -283,7 +281,6 @@ namespace Mirror
 				if (off == string::npos) return properties;
 				if (!property->ref_class) return {};
 				cls = property->ref_class;
-				pos = off + 1;
 			}
 		}
 
@@ -306,8 +303,8 @@ namespace Mirror
 		auto Properties() const
 		{
 			auto transform = views::transform([](const Property* p){ return dynamic_cast<const PropertyType*>(p); });
-			auto filter = views::filter([](const PropertyType* p){ return p != nullptr; });
-			return properties | transform | filter;
+			auto not_null = views::filter([](const PropertyType* p){ return p != nullptr; });
+			return properties | transform | not_null;
 		}
 
 		// Get a range of methods converted to MethodType
@@ -315,8 +312,8 @@ namespace Mirror
 		auto Methods() const
 		{
 			auto transform = views::transform([](const Method* m){ return dynamic_cast<const MethodType*>(m); });
-			auto filter = views::filter([](const MethodType* m){ return m != nullptr; });
-			return methods | transform | filter;
+			auto not_null = views::filter([](const MethodType* m){ return m != nullptr; });
+			return methods | transform | not_null;
 		}
 
 		template<typename PropertyType>

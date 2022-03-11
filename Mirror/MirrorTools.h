@@ -22,7 +22,7 @@ namespace Mirror
 	};
 
 	template<typename Type>
-	concept IsReflected = requires { Type::Class; };
+	concept Mirrored = requires { Type::Class; };
 
 	template<typename Type>
 	concept StlContainer = requires (Type& c)

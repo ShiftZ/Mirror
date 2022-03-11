@@ -382,7 +382,7 @@ struct LuaValue<Type*>
 	}
 };
 
-template<typename Type> requires (Mirror::IsReflected<Type> && !std::is_convertible_v<Type*, Mirror::IMirror*>)
+template<typename Type> requires (Mirror::Mirrored<Type> && !std::is_convertible_v<Type*, Mirror::IMirror*>)
 struct LuaValue<Type*>
 {
 	static void Push(lua_State* lua, Type* value) { LuaValue<Type>::Push(lua, *value); }
@@ -417,7 +417,7 @@ struct LuaValue<std::unique_ptr<Type>>
 	}
 };
 
-template<typename Type> requires Mirror::IsReflected<Type>
+template<typename Type> requires Mirror::Mirrored<Type>
 struct LuaValue<Type>
 {
 	static void Push(lua_State* lua, Type& obj)

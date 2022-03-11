@@ -126,7 +126,7 @@ namespace Mirror
 			name = meta->Name();
 			type = &typeid(Type);
 
-			if constexpr (IsReflected<Type>)
+			if constexpr (Mirrored<Type>)
 				ref_class = Type::Class::GetClass();
 
 			if constexpr (is_convertible_v<decltype(&PropertyMeta::Access::Get), Getter>)
