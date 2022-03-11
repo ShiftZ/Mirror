@@ -3,7 +3,7 @@
 #include <fstream>
 #include <filesystem>
 
-#include "RefExpress.h"
+#include "MirrorExpress.h"
 #include "LuaBind.hpp"
 
 using namespace std;
@@ -124,7 +124,7 @@ int main()
 	lua_pushcfunction(lua, lua_CFunction(get_cat));
 	lua_setglobal(lua, "GetCat");
 
-	if (luaL_loadfile(lua, "luabind_sample.lua") != 0)
+	if (luaL_loadfile(lua, "Luabind_Sample.lua") != 0)
 	{
 		cout << "'luaL_loadfile' failed\n";
 		return 0;

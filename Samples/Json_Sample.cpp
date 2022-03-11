@@ -4,7 +4,7 @@
 #include <fstream>
 #include <filesystem>
 
-#include "json_sample.h"
+#include "Json_Sample.h"
 
 enum class StarType { ENUM(StarType, YellowDwarf, RedDwarf, RedGiant, RedSuperGiant, BlueGiant, WhiteDwarf, BrownDwarf) };
 
@@ -52,7 +52,7 @@ void JsonWrite(const filesystem::path& path)
 
 Star JsonRead(const filesystem::path& path)
 {
-	fstream file("solar_system.json", ios::in);
+	fstream file("SolarSystem.json", ios::in);
 
 	JsonBox::Value jval;
 	jval.loadFromStream(file);
@@ -64,7 +64,7 @@ Star JsonRead(const filesystem::path& path)
 
 int main()
 {
-	filesystem::path path = "solar_system.json";
+	filesystem::path path = "SolarSystem.json";
 	JsonWrite(path);
 	Star sun = JsonRead(path);
 

@@ -8,8 +8,8 @@
 #include <span>
 #include <ranges>
 
-#include "RefProperty.h"
-#include "RefMethod.h"
+#include "MirrorProperty.h"
+#include "MirrorMethod.h"
 
 #ifdef _MSC_VER
 #	define MIRROR_FORCEDSPEC __declspec(noinline)

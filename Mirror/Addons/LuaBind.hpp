@@ -5,9 +5,9 @@
 #include <vector>
 #include <string>
 
-#include "RefClass.h"
-#include "RefProperty.h"
-#include "RefMethod.h"
+#include "MirrorClass.h"
+#include "MirrorProperty.h"
+#include "MirrorMethod.h"
 
 #include "lua.h"
 #include "lauxlib.h"

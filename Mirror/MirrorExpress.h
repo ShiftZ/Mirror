@@ -1,8 +1,8 @@
 #pragma once
 
-#include "RefClass.h"
-#include "RefMethod.h"
-#include "RefEnums.h"
+#include "MirrorClass.h"
+#include "MirrorMethod.h"
+#include "MirrorEnums.h"
 
 // default property and method class injection
 #define CLASS(name, ...) MIRROR_CLASS(Mirror::Property, Mirror::Method, name, __VA_ARGS__)
