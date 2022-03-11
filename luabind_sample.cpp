@@ -7,14 +7,14 @@
 #include "LuaBind.hpp"
 
 using namespace std;
-using namespace Reflection;
+using namespace Mirror;
 
-enum class Color { ENUM(Color, Black, White, Ginger) }; // built-in enum reflection
+enum class Color { ENUM(Color, Black, White, Ginger) }; // built-in enum mirror
 
 enum class Expression { Insolent, Shameless, Begging, Fearsome };
-XENUM(Expression, Insolent, Shameless, Begging, Fearsome); // external enum reflection
+XENUM(Expression, Insolent, Shameless, Begging, Fearsome); // external enum mirror
 
-class Animal : public Reflected
+class Animal : public IMirror
 {
 	LUA_CLASS(Animal)
 
@@ -57,13 +57,13 @@ class Cat : public Furious, public Pet
 	LUA_CLASS(Cat, MULTIBASE(Furious, Pet))
 
 public:
-	struct Snout : Reflected
+	struct Snout : IMirror
 	{
 		LUA_STRUCT(Snout)
 		Expression PROPERTY(expression);
 	};
 
-	struct Tail : Reflected
+	struct Tail : IMirror
 	{
 		LUA_STRUCT(Tail)
 		Color PROPERTY(color);

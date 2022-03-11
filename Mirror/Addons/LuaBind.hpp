@@ -13,8 +13,8 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
-#define LUA_CLASS(name, ...) REFLECTION_CLASS(LuaProperty, LuaMethod, name, __VA_ARGS__)
-#define LUA_STRUCT(name, ...) REFLECTION_STRUCT(LuaProperty, LuaMethod, name, __VA_ARGS__)
+#define LUA_CLASS(name, ...) MIRROR_CLASS(LuaProperty, LuaMethod, name, __VA_ARGS__)
+#define LUA_STRUCT(name, ...) MIRROR_STRUCT(LuaProperty, LuaMethod, name, __VA_ARGS__)
 
 template<typename> struct LuaValue;
 
@@ -30,7 +30,7 @@ void LuaPush(lua_State* lua, Type&& value) { LuaValue<Type>::Push(lua, std::forw
 template<typename Type>
 Type LuaGet(lua_State* lua, int index) { return LuaValue<Type>::Get(lua, index); }
 
-class LuaProperty : public virtual Reflection::Property
+class LuaProperty : public virtual Mirror::Property
 {
 	void (LuaProperty::*push_value)(void*, lua_State*) const = nullptr;
 	void (LuaProperty::*read_value)(void*, lua_State*, int) const = nullptr;
@@ -61,12 +61,12 @@ public:
 			if constexpr (LuaGettable<typename Meta::Type>)
 				read_value = &LuaProperty::Reader<typename Meta::Type>;
 
-			if constexpr (LuaGettable<typename Meta::Type> && Reflection::CopyConstructible<typename Meta::Type>)
+			if constexpr (LuaGettable<typename Meta::Type> && Mirror::CopyConstructible<typename Meta::Type>)
 				get_any = &LuaProperty::AnyGetter<Meta::Type>;
 		}
 	}
 
-	using Reflection::Property::GetAny;
+	using Mirror::Property::GetAny;
 
 	std::any GetAny(lua_State* lua, int index) const
 	{
@@ -82,7 +82,7 @@ public:
 		(this->*push_value)(obj, lua);
 	}
 
-	void PushValue(Reflection::Reflected* obj, lua_State* lua) const
+	void PushValue(Mirror::IMirror* obj, lua_State* lua) const
 	{
 		PushValue(obj->GetThis(), lua);
 	}
@@ -94,7 +94,7 @@ public:
 		(this->*read_value)(obj, lua, index);
 	}
 
-	void ReadValue(Reflection::Reflected* obj, lua_State* lua, int index) const
+	void ReadValue(Mirror::IMirror* obj, lua_State* lua, int index) const
 	{
 		ReadValue(obj->GetThis(), lua, index);
 	}
@@ -104,7 +104,7 @@ public:
 	bool CanGetAny() const { return get_any != nullptr; }
 };
 
-struct LuaMethod : virtual Reflection::Method
+struct LuaMethod : virtual Mirror::Method
 {
 	template<typename Signature, int N, int... Ns>
 	struct Invoker : Invoker<Signature, N - 1, Ns..., N> {};
@@ -112,7 +112,7 @@ struct LuaMethod : virtual Reflection::Method
 	template<typename Return, typename... Args, int... Ns>
 	struct Invoker<Return (Args ...), 0, Ns...>
 	{
-		static Return Call(lua_State* lua, Reflection::Reflected* obj, Method* method)
+		static Return Call(lua_State* lua, Mirror::IMirror* obj, Method* method)
 		{
 			return method->Invoke<Return (Args ...)>(*obj, LuaValue<Args>::Get(lua, -Ns)...);
 		}
@@ -139,7 +139,7 @@ struct LuaMethod : virtual Reflection::Method
 			luaL_argerror(lua, 1, "must be an object.");
 
 		Method* method = (LuaMethod*)lua_touserdata(lua, lua_upvalueindex(1));
-		Reflection::Reflected* obj = *(Reflection::Reflected**)lua_touserdata(lua, 1);
+		Mirror::IMirror* obj = *(Mirror::IMirror**)lua_touserdata(lua, 1);
 
 		try
 		{
@@ -160,9 +160,9 @@ struct LuaMethod : virtual Reflection::Method
 inline int LuaGetter(lua_State* lua)
 {
 	std::string_view name = lua_tostring(lua, -1);
-	Reflection::Reflected* obj = *(Reflection::Reflected**)lua_touserdata(lua, -2);
+	Mirror::IMirror* obj = *(Mirror::IMirror**)lua_touserdata(lua, -2);
 	if (!obj) luaL_error(lua, "Referring to a null object.");
-	Reflection::Class* cls = obj->GetClass();
+	Mirror::Class* cls = obj->GetClass();
 
 	const LuaProperty* property = nullptr;
 	const LuaMethod* method = nullptr;
@@ -199,9 +199,9 @@ inline int LuaGetter(lua_State* lua)
 inline int LuaSetter(lua_State* lua)
 {
 	std::string_view name = lua_tostring(lua, -2);
-	Reflection::Reflected* obj = *(Reflection::Reflected**)lua_touserdata(lua, -3);
+	Mirror::IMirror* obj = *(Mirror::IMirror**)lua_touserdata(lua, -3);
 	if (!obj) luaL_error(lua, "Assigning to a null object.");
-	Reflection::Class* cls = obj->GetClass();
+	Mirror::Class* cls = obj->GetClass();
 
 	if (const LuaProperty* property = cls->GetProperty<LuaProperty>(name))
 	{
@@ -217,7 +217,7 @@ inline int LuaSetter(lua_State* lua)
 
 inline int LuaDestructor(lua_State* lua)
 {
-	using Data = std::pair<Reflection::Reflected*, bool>;
+	using Data = std::pair<Mirror::IMirror*, bool>;
 	auto [ptr, own] = *(Data*)lua_touserdata(lua, 1);
 	if (own) delete ptr;
 	return 0;
@@ -225,8 +225,8 @@ inline int LuaDestructor(lua_State* lua)
 
 inline int LuaEqual(lua_State* lua)
 {
-	Reflection::Reflected* a = *(Reflection::Reflected**)luaL_checkudata(lua, 1, "Reflected");
-	Reflection::Reflected* b = *(Reflection::Reflected**)luaL_checkudata(lua, 2, "Reflected");
+	Mirror::IMirror* a = *(Mirror::IMirror**)luaL_checkudata(lua, 1, "Reflected");
+	Mirror::IMirror* b = *(Mirror::IMirror**)luaL_checkudata(lua, 2, "Reflected");
 	lua_settop(lua, 0);
 	lua_pushboolean(lua, a == b);
 	return 1;
@@ -295,12 +295,12 @@ template<typename EnumType>
 void AddEnum(lua_State* lua)
 {
 	lua_newtable(lua);
-	for (auto [name, value] : Reflection::Enum<EnumType>::GetPairs())
+	for (auto [name, value] : Mirror::Enum<EnumType>::GetPairs())
 	{
 		lua_pushnumber(lua, lua_Number(value));
 		lua_setfield(lua, -2, name.data());
 	}
-	lua_setglobal(lua, Reflection::Enum<EnumType>::GetName().data());
+	lua_setglobal(lua, Mirror::Enum<EnumType>::GetName().data());
 };
 
 template<>
@@ -357,13 +357,13 @@ struct LuaValue<Type>
 	static Type Get(lua_State* lua, int index) { return (Type)luaL_checkinteger(lua, index); }
 };
 
-template<typename Type> requires std::is_convertible_v<Type*, Reflection::Reflected*>
+template<typename Type> requires std::is_convertible_v<Type*, Mirror::IMirror*>
 struct LuaValue<Type*>
 {
-	static void Push(lua_State* lua, const Reflection::Reflected* iref, bool possess = false)
+	static void Push(lua_State* lua, const Mirror::IMirror* iref, bool possess = false)
 	{
 		if (!iref) return lua_pushnil(lua);
-		using Data = std::pair<const Reflection::Reflected*, bool>;
+		using Data = std::pair<const Mirror::IMirror*, bool>;
 		Data* data = (Data*)lua_newuserdata(lua, sizeof(Data));
 		*data = {iref, possess};
 		luaL_getmetatable(lua, "Reflected");
@@ -377,12 +377,12 @@ struct LuaValue<Type*>
 
 		if (lua_isnil(lua, index)) return nullptr;
 
-		Reflection::Reflected* obj = *(Reflection::Reflected**)lua_touserdata(lua, index);
+		Mirror::IMirror* obj = *(Mirror::IMirror**)lua_touserdata(lua, index);
 		return dynamic_cast<Type*>(obj);
 	}
 };
 
-template<typename Type> requires (Reflection::IsReflected<Type> && !std::is_convertible_v<Type*, Reflection::Reflected*>)
+template<typename Type> requires (Mirror::IsReflected<Type> && !std::is_convertible_v<Type*, Mirror::IMirror*>)
 struct LuaValue<Type*>
 {
 	static void Push(lua_State* lua, Type* value) { LuaValue<Type>::Push(lua, *value); }
@@ -398,17 +398,17 @@ struct LuaValue<std::unique_ptr<Type>>
 
 	static void Push(lua_State* lua, std::unique_ptr<Type>&& ptr) requires LuaPushable<Type*>
 	{
-		LuaValue<Reflection::Reflected*>::Push(lua, ptr.release(), true);
+		LuaValue<Mirror::IMirror*>::Push(lua, ptr.release(), true);
 	}
 
-	static std::unique_ptr<Type> Get(lua_State* lua, int index) requires std::is_convertible_v<Type*, Reflection::Reflected*>
+	static std::unique_ptr<Type> Get(lua_State* lua, int index) requires std::is_convertible_v<Type*, Mirror::IMirror*>
 	{
 		if (!lua_isuserdata(lua, index) && !lua_isnil(lua, index))
 			luaL_argerror(lua, index, "not an object");
 
 		if (lua_isnil(lua, index)) return nullptr;
 
-		using Data = std::pair<Reflection::Reflected*, bool>;
+		using Data = std::pair<Mirror::IMirror*, bool>;
 		auto& [ptr, own] = *(Data*)lua_touserdata(lua, index);
 		if (!own) luaL_argerror(lua, index, "the object must be owned by Lua");
 		own = false;
@@ -417,17 +417,17 @@ struct LuaValue<std::unique_ptr<Type>>
 	}
 };
 
-template<typename Type> requires Reflection::IsReflected<Type>
+template<typename Type> requires Mirror::IsReflected<Type>
 struct LuaValue<Type>
 {
 	static void Push(lua_State* lua, Type& obj)
 	{
-		if constexpr (std::is_base_of_v<Reflection::Reflected, Type>)
+		if constexpr (std::is_base_of_v<Mirror::IMirror, Type>)
 			LuaValue<Type*>::Push(lua, &obj);
 		else
 		{
 			lua_newtable(lua);
-			Reflection::Class* cls = obj.GetClass();
+			Mirror::Class* cls = obj.GetClass();
 			for (const LuaProperty* property : cls->Properties<LuaProperty>())
 			{
 				if (property->CanPushValue())
@@ -446,7 +446,7 @@ struct LuaValue<Type>
 
 		if (lua_isuserdata(lua, index))
 		{
-			Reflection::Reflected* iref = *(Reflection::Reflected**)lua_touserdata(lua, index);
+			Mirror::IMirror* iref = *(Mirror::IMirror**)lua_touserdata(lua, index);
 			Type* src = dynamic_cast<Type*>(iref);
 			if (!src)
 			{
@@ -459,7 +459,7 @@ struct LuaValue<Type>
 		else
 		{
 			Type object;
-			Reflection::Class* cls = object.GetClass();
+			Mirror::Class* cls = object.GetClass();
 			lua_pushnil(lua);
 			while (lua_next(lua, index < 0 ? index - 1 : index))
 			{
@@ -490,9 +490,9 @@ struct LuaValue<Type>
 };
 
 template<typename Type, template<typename...> class Array, typename... Others>
-	requires (Reflection::StlContainer<Array<Type, Others...>> &&	
+	requires (Mirror::StlContainer<Array<Type, Others...>> &&	
 			  !std::is_same_v<Array<Type, Others...>, std::string> &&
-			  !Reflection::StlMap<Array<Type, Others...>>)
+			  !Mirror::StlMap<Array<Type, Others...>>)
 struct LuaValue<Array<Type, Others...>>
 {
 	static void Push(lua_State* lua, const Array<Type, Others...>& ar) requires LuaPushable<Type>
@@ -537,7 +537,7 @@ struct LuaValue<Array<Type, Others...>>
 };
 
 template<typename Key, typename Value, template<typename...> class Map, typename... Others>
-	requires Reflection::StlMap<Map<Key, Value, Others...>>
+	requires Mirror::StlMap<Map<Key, Value, Others...>>
 struct LuaValue<Map<Key, Value, Others...>>
 {
 	static void Push(lua_State* lua, const Map<Key, Value, Others...>& map) requires LuaPushable<Key> && LuaPushable<Value>
@@ -550,17 +550,17 @@ struct LuaValue<Map<Key, Value, Others...>>
 			lua_settable(lua, -3);
 		}
 
-		if constexpr (std::is_convertible_v<Key, Reflection::Reflected*>)
+		if constexpr (std::is_convertible_v<Key, Mirror::IMirror*>)
 		{
-			if (luaL_newmetatable(lua, "unordered_map<Reflected*, Value>"))
+			if (luaL_newmetatable(lua, "unordered_map<Mirror*, Value>"))
 			{
 				auto lookup = [](lua_State* lua)
 				{
 					lua_pushnil(lua);
 					while (lua_next(lua, -3))
 					{
-						Reflection::Reflected* a = *(Reflection::Reflected**)lua_touserdata(lua, -2);
-						Reflection::Reflected* b = *(Reflection::Reflected**)lua_touserdata(lua, -3);
+						Mirror::IMirror* a = *(Mirror::IMirror**)lua_touserdata(lua, -2);
+						Mirror::IMirror* b = *(Mirror::IMirror**)lua_touserdata(lua, -3);
 						if (a == b) return 1;
 						lua_pop(lua, 1);
 					}

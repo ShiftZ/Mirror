@@ -3,11 +3,11 @@
 #include "RefExpress.h"
 #include "JsonBox.h"
 
-#define JSON_CLASS(Name) REFLECTION_CLASS(JsonMetaData, Method, Name)
-#define JSON_STRUCT(Name) REFLECTION_STRUCT(JsonMetaData, Method, Name)
+#define JSON_CLASS(Name) MIRROR_CLASS(JsonMetaData, Method, Name)
+#define JSON_STRUCT(Name) MIRROR_STRUCT(JsonMetaData, Method, Name)
 
 using namespace std; // using namespace in a header file is not the best idea
-using namespace Reflection; // but it makes it easier because c++ doesn't support nested namespace usings
+using namespace Mirror; // but it makes it easier because c++ doesn't support nested namespace usings
 
 template<typename>
 struct JsonReadWrite; // it's convenient to keep Read and Write implementations in a single templated struct

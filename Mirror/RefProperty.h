@@ -7,15 +7,15 @@
 
 #include "RefTools.h"
 
-#define REFLECTION_PROPERTY(property, ...) \
-	REFLECTION_PROPERTY_DATA(property, __VA_ARGS__); \
-	decltype(Reflection::GetReturnType(&Class::Type::xproperty_##property##_type)) property
+#define MIRROR_PROPERTY(property, ...) \
+	MIRROR_PROPERTY_DATA(property, __VA_ARGS__); \
+	decltype(Mirror::GetReturnType(&Class::Type::xproperty_##property##_type)) property
 
-#define REFLECTION_PROPERTY_DATA(property, ...) \
+#define MIRROR_PROPERTY_DATA(property, ...) \
 	xproperty_##property##_type(); \
 	struct xproperty_##property##_meta \
 	{ \
-		using Type = decltype(Reflection::GetReturnType(&Class::Type::xproperty_##property##_type)); \
+		using Type = decltype(Mirror::GetReturnType(&Class::Type::xproperty_##property##_type)); \
 		using Scope = Class::Type; \
 		template<typename Type> \
 		struct BasicAccess \
@@ -27,17 +27,17 @@
 		}; \
 		struct Access : public BasicAccess<Type> { __VA_ARGS__ }; \
 		string_view Name() { return #property; } \
-		REFLECTION_FORCEDSPEC static void Register() \
+		MIRROR_FORCEDSPEC static void Register() \
 		{ \
-			Reflection::StaticInstance<Reflection::Executor<&Register>>::instance; \
+			Mirror::StaticInstance<Mirror::Executor<&Register>>::instance; \
 			xproperty_##property##_meta meta; \
 			Class::PropertyType* p = new Class::PropertyType(&meta); \
-			Reflection::Class::Instance<Class::Type>()->AddProperty(p); \
+			Mirror::Class::Instance<Class::Type>()->AddProperty(p); \
 		} \
 	}; \
 	friend struct xproperty_##property##_meta
 
-#define REFLECTION_VIRTUAL_PROPERTY(property, ...) \
+#define MIRROR_VIRTUAL_PROPERTY(property, ...) \
 	xproperty_##property##_type(); \
 	struct xproperty_##property##_meta \
 	{ \
@@ -52,32 +52,32 @@
 		}; \
 		struct Access : public InvalidAccess { __VA_ARGS__ }; \
 		string_view Name() { return #property; } \
-		REFLECTION_FORCEDSPEC static void Register() \
+		MIRROR_FORCEDSPEC static void Register() \
 		{ \
-			Reflection::StaticInstance<Reflection::Executor<&Register>>::instance; \
+			Mirror::StaticInstance<Mirror::Executor<&Register>>::instance; \
 			xproperty_##property##_meta meta; \
-			Reflection::Class::Instance<Class::Type>()->AddProperty(new Class::PropertyType(&meta)); \
+			Mirror::Class::Instance<Class::Type>()->AddProperty(new Class::PropertyType(&meta)); \
 		} \
 	}
 
-#define REFLECTION_GETTER(getter) \
+#define MIRROR_GETTER(getter) \
 	static void* Get(void* ptr) { return Gett((Class::Type*)ptr, &Class::Type::getter); } \
 	template<typename Type> \
 	static void* Gett(Type* ptr, ...) { return (void*)&ptr->getter(); } \
-	static void* Gett(Class::Type* ptr, Type (Class::Type::*)() const) { return Reflection::Temporal::Make<Type>(ptr->getter()); } \
-	static void* Gett(Class::Type* ptr, Type (Class::Type::*)()) { return Reflection::Temporal::Make<Type>(ptr->getter()); }
+	static void* Gett(Class::Type* ptr, Type (Class::Type::*)() const) { return Mirror::Temporal::Make<Type>(ptr->getter()); } \
+	static void* Gett(Class::Type* ptr, Type (Class::Type::*)()) { return Mirror::Temporal::Make<Type>(ptr->getter()); }
 
-#define REFLECTION_SETTER(setter) \
+#define MIRROR_SETTER(setter) \
 	static void Set(void* domain, void* value) { ((Class::Type*)domain)->setter(*(Type*)value); } \
 	static void Move(void* domain, void* value) { ((Class::Type*)domain)->setter(*(Type*)value); }
 
-#define REFLECTION_MOVER(mover) \
+#define MIRROR_MOVER(mover) \
 	static void Move(void* domain, void* value) { ((Class::Type*)domain)->mover(std::move(*(Type*)value)); }
 
-#define REFLECTION_TEXT(txt) \
+#define MIRROR_TEXT(txt) \
 	static string_view Text() { return txt; }
 
-namespace Reflection
+namespace Mirror
 {
 	using namespace std;
 

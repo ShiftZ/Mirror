@@ -6,24 +6,22 @@
 #include <cassert>
 #include <format>
 
-#include "RefTools.h"
-
-#define REFLECTION_ENUM(type, ...) __VA_ARGS__ }; \
-	REFLECTION_FORCEDSPEC inline void xreflection_##type##() \
+#define MIRROR_ENUM(type, ...) __VA_ARGS__ }; \
+	MIRROR_FORCEDSPEC inline void xmirror_##type() \
 	{ \
-		void* execute = &Reflection::StaticInstance<Reflection::Executor<&xreflection_##type>>::instance; \
+		void* execute = &Mirror::StaticInstance<Mirror::Executor<&xmirror_##type>>::instance; \
 		struct Values { int64_t __VA_ARGS__; }; \
-		Reflection::Enum<type>::Instance().Construct<Values>(#type, #__VA_ARGS__);
+		Mirror::Enum<type>::Instance().Construct<Values>(#type, #__VA_ARGS__);
 
-#define REFLECTION_ENUM_EXTERNAL(type, ...) \
-	REFLECTION_FORCEDSPEC inline void xreflection_##type##() \
+#define MIRROR_ENUM_EXTERNAL(type, ...) \
+	MIRROR_FORCEDSPEC inline void xmirror_##type() \
 	{ \
-		void* execute = &Reflection::StaticInstance<Reflection::Executor<&xreflection_##type>>::instance; \
+		void* execute = &Mirror::StaticInstance<Mirror::Executor<&xmirror_##type>>::instance; \
 		struct Values { int64_t __VA_ARGS__; }; \
-		Reflection::Enum<type>::Instance().Construct<Values>(#type, #__VA_ARGS__); \
+		Mirror::Enum<type>::Instance().Construct<Values>(#type, #__VA_ARGS__); \
 	}
 
-namespace Reflection
+namespace Mirror
 {
 	using namespace std;
 

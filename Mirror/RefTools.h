@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-namespace Reflection
+namespace Mirror
 {
 	using namespace std;
 

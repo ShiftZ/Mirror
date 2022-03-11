@@ -1,4 +1,4 @@
-// This is an example of json serialization\deserialization implementation with the reflection library
+// This is an example of json serialization\deserialization implementation with the mirror library
 // It uses JsonBox library, but it gives a general idea how to implement any kind of serializer\deserializer
 
 #include <fstream>

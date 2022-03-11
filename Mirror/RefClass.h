@@ -12,49 +12,49 @@
 #include "RefMethod.h"
 
 #ifdef _MSC_VER
-#	define REFLECTION_FORCEDSPEC __declspec(noinline)
+#	define MIRROR_FORCEDSPEC __declspec(noinline)
 #else
-#	define REFLECTION_FORCEDSPEC [[noinline]]
+#	define MIRROR_FORCEDSPEC [[noinline]]
 #endif
 
-#define REFLECTION_CLASS(property_type, method_type, type, ...) REFLECTION_STRUCT(property_type, method_type, type, __VA_ARGS__) private:
-#define REFLECTION_STRUCT(property_type, method_type, type, ...) \
+#define MIRROR_CLASS(property_type, method_type, type, ...) MIRROR_STRUCT(property_type, method_type, type, __VA_ARGS__) private:
+#define MIRROR_STRUCT(property_type, method_type, type, ...) \
 	public: \
-	using BaseList = Reflection::GetBaseList<type __VA_ARGS__>; \
+	using BaseList = Mirror::GetBaseList<type __VA_ARGS__>; \
 	struct Class \
 	{ \
 		using Type = type; \
 		using PropertyType = property_type; \
 		using MethodType = method_type; \
 		static const char* RawName() { return #type; } \
-		static string_view Name() { return Reflection::Class::Instance<type>()->Name(); } \
-		static int PropertiesNum() { return Reflection::Class::Instance<type>()->PropertiesNum(); } \
-		static auto Properties() { return Reflection::Class::Instance<type>()->Properties<PropertyType>(); } \
-		static auto Methods() { return Reflection::Class::Instance<type>()->Methods<MethodType>(); } \
-		static const PropertyType* GetProperty(const std::string& name) { return Reflection::Class::Instance<type>()->GetProperty<PropertyType>(name); } \
-		static const PropertyType* GetProperty(std::type_index t) { return Reflection::Class::Instance<type>()->GetProperty<PropertyType>(t); } \
-		static const PropertyType* GetProperty(int index) { return Reflection::Class::Instance<type>()->GetProperty<PropertyType>(index); } \
-		static std::vector<const Reflection::Property*> Resolve( const std::string& path ) { return Reflection::Class::Instance<type>()->Resolve(path); } \
+		static string_view Name() { return Mirror::Class::Instance<type>()->Name(); } \
+		static int PropertiesNum() { return Mirror::Class::Instance<type>()->PropertiesNum(); } \
+		static auto Properties() { return Mirror::Class::Instance<type>()->Properties<PropertyType>(); } \
+		static auto Methods() { return Mirror::Class::Instance<type>()->Methods<MethodType>(); } \
+		static const PropertyType* GetProperty(const std::string& name) { return Mirror::Class::Instance<type>()->GetProperty<PropertyType>(name); } \
+		static const PropertyType* GetProperty(std::type_index t) { return Mirror::Class::Instance<type>()->GetProperty<PropertyType>(t); } \
+		static const PropertyType* GetProperty(int index) { return Mirror::Class::Instance<type>()->GetProperty<PropertyType>(index); } \
+		static std::vector<const Mirror::Property*> Resolve( const std::string& path ) { return Mirror::Class::Instance<type>()->Resolve(path); } \
 		template<typename PropertyType> \
-		static std::vector<const PropertyType*> Resolve(const std::string& path) { return Reflection::Class::Instance<type>()->Resolve<PropertyType>(path); } \
-		static const MethodType* GetMethod(const std::string& name) { return Reflection::Class::Instance<type>()->GetMethod<const MethodType>(name); } \
-		static auto GetHeirs() { return Reflection::Class::Instance<type>()->GetHeirs(); } \
-		static auto GetBases() { return Reflection::Class::Instance<type>()->GetBases(); } \
-		static Reflection::Class* GetClass() { return Reflection::Class::Instance<type>(); } \
-		static Reflection::Property* Copy(const Reflection::Property* p) { return new PropertyType(*dynamic_cast<const PropertyType*>(p)); } \
-		static Reflection::Method* Copy(const Reflection::Method* m) { return new MethodType(*dynamic_cast<const MethodType*>(m)); } \
+		static std::vector<const PropertyType*> Resolve(const std::string& path) { return Mirror::Class::Instance<type>()->Resolve<PropertyType>(path); } \
+		static const MethodType* GetMethod(const std::string& name) { return Mirror::Class::Instance<type>()->GetMethod<const MethodType>(name); } \
+		static auto GetHeirs() { return Mirror::Class::Instance<type>()->GetHeirs(); } \
+		static auto GetBases() { return Mirror::Class::Instance<type>()->GetBases(); } \
+		static Mirror::Class* GetClass() { return Mirror::Class::Instance<type>(); } \
+		static Mirror::Property* Copy(const Mirror::Property* p) { return new PropertyType(*dynamic_cast<const PropertyType*>(p)); } \
+		static Mirror::Method* Copy(const Mirror::Method* m) { return new MethodType(*dynamic_cast<const MethodType*>(m)); } \
 	}; \
-	Reflection::Class* GetClass() const { return Reflection::Class::Instance<type>(); } \
+	Mirror::Class* GetClass() const { return Mirror::Class::Instance<type>(); } \
 	void* GetThis() const { return (void*)this; } \
-	static REFLECTION_FORCEDSPEC void xreflection_class() \
+	static MIRROR_FORCEDSPEC void xmirror_class() \
 	{ \
-		Reflection::StaticInstance<Reflection::Executor<&xreflection_class>>::instance; \
-		Reflection::Class::Instance<type>(); \
+		Mirror::StaticInstance<Mirror::Executor<&xmirror_class>>::instance; \
+		Mirror::Class::Instance<type>(); \
 	}
 
-#define REFLECTION_MULTIBASE(...) , Reflection::TypeList<__VA_ARGS__>
+#define MIRROR_MULTIBASE(...) , Mirror::TypeList<__VA_ARGS__>
 
-namespace Reflection
+namespace Mirror
 {
 	using namespace std;
 
@@ -80,12 +80,12 @@ namespace Reflection
 	void* StaticCaster(void* ptr){ return (To*)(From*)ptr; }
 
 	// Interface for abstract usage
-	class Reflected
+	class IMirror
 	{
 	public:
 		virtual Class* GetClass() const = 0;
 		virtual void* GetThis() const = 0;
-		virtual ~Reflected() = default;
+		virtual ~IMirror() = default;
 	};
 
 	class Class
@@ -103,7 +103,7 @@ namespace Reflection
 		string_view name;
 		
 		void* (*make_default)() = nullptr;
-		Reflected* (*make_reflected)() = nullptr;
+		IMirror* (*make_reflected)() = nullptr;
 
 	private:
 		template<typename Type, typename Base, typename... Others>
@@ -170,11 +170,13 @@ namespace Reflection
 			type = &typeid(Type);
 			name = Type::Class::RawName();
 			
-			if constexpr (is_default_constructible_v<Type>)
+			if constexpr (requires{ new Type(); })
+			{
 				make_default = []()->void* { return new Type(); };
 
-			if constexpr (is_base_of_v<Reflected, Type> && is_default_constructible_v<Type>)
-				make_reflected = []()->Reflected* { return new Type(); };
+				if constexpr (is_base_of_v<IMirror, Type>)
+					make_reflected = []()->IMirror* { return new Type(); };
+			}
 
 			Construct<Type>((typename Type::BaseList*)nullptr);
 		}
@@ -386,7 +388,7 @@ namespace Reflection
 		Type* MakeNew() const { return make_default ? (Type*)make_default() : nullptr; }
 
 		// Create an instance of the class if possible and return a pointer on interface
-		Reflected* MakeReflected() const { return make_reflected ? make_reflected() : nullptr; }
+		IMirror* MakeReflected() const { return make_reflected ? make_reflected() : nullptr; }
 
 		void* Cast(Class* heir, void* ptr) const
 		{
@@ -495,7 +497,7 @@ namespace Reflection
 
 	// Find pointer to a nested structure following the specified properties
 	template<typename PropertyIter>
-	auto Resolve(Reflected* obj, PropertyIter begin, PropertyIter end) -> pair<void*, decltype(*begin)>
+	auto Resolve(IMirror* obj, PropertyIter begin, PropertyIter end) -> pair<void*, decltype(*begin)>
 	{
 		return Resolve(obj->GetThis(), begin, end);
 	}
@@ -518,13 +520,13 @@ namespace Reflection
 
 	// Find pointer to a nested structure following the specified path
 	template<typename PropertyType>
-	pair<void*, PropertyType*> Resolve(Reflected* obj, string_view path)
+	pair<void*, PropertyType*> Resolve(IMirror* obj, string_view path)
 	{
 		return Resolve<PropertyType>(obj->GetThis(), obj->GetClass(), path);
 	}
 
 	// Find pointer to a nested structure following the specified path
-	inline pair<void*, const Property*> Resolve(Reflected* obj, string_view path)
+	inline pair<void*, const Property*> Resolve(IMirror* obj, string_view path)
 	{
 		return Resolve(obj->GetThis(), obj->GetClass(), path);
 	}

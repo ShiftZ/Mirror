@@ -4,13 +4,13 @@
 #include "RefExpress.h"
 
 using namespace std;
-using namespace Reflection;
+using namespace Mirror;
 
-enum class Color { ENUM(Color, Black, White, Ginger) }; // built-in enum reflection
+enum class Color { ENUM(Color, Black, White, Ginger) }; // built-in enum mirror
 enum class Expression { Insolent, Shameless, Begging, Fearsome };
-XENUM(Expression, Insolent, Shameless, Begging, Fearsome); // external enum reflection
+XENUM(Expression, Insolent, Shameless, Begging, Fearsome); // external enum mirror
 
-class Animal : public Reflected // this inheritance is not obligatory, it just makes the GetClass() method virtual
+class Animal : public IMirror // this inheritance is not obligatory, it just makes the GetClass() method virtual
 {
 	CLASS(Animal)
 

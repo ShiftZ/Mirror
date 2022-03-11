@@ -4,29 +4,29 @@
 #include <type_traits>
 #include <format>
 
-#define REFLECTION_METHOD_META(name, native_name, ...) \
+#define MIRROR_METHOD_META(name, native_name, ...) \
 	xproperty_##name##_type(); \
 	struct xproperty_##name##_meta \
 	{ \
 		using Scope = Class::Type; \
 		string_view Name() { return #name; } \
 		auto Func() { return &Class::Type::native_name; } \
-		REFLECTION_FORCEDSPEC static void Register() \
+		MIRROR_FORCEDSPEC static void Register() \
 		{ \
-			Reflection::StaticInstance<Reflection::Executor<&Register>>::instance; \
+			Mirror::StaticInstance<Mirror::Executor<&Register>>::instance; \
 			xproperty_##name##_meta meta; \
 			Class::MethodType* m = new Class::MethodType(&meta); \
-			Reflection::Class::Instance<Class::Type>()->AddMethod(m); \
+			Mirror::Class::Instance<Class::Type>()->AddMethod(m); \
 		} \
 	}; \
 	friend struct xproperty_##name##_meta; \
 	__VA_ARGS__ std::invoke_result_t<decltype(&Class::Type::xproperty_##name##_type), Class::Type> native_name
 
-#define REFLECTION_METHOD(name) REFLECTION_METHOD_META(name, name)
-#define REFLECTION_VIRTUAL_METHOD(name) REFLECTION_METHOD_META(name, name, virtual)
-#define REFLECTION_IMAGINARY_METHOD(name) REFLECTION_METHOD_META(name, xmethod##name)
+#define MIRROR_METHOD(name) MIRROR_METHOD_META(name, name)
+#define MIRROR_VIRTUAL_METHOD(name) MIRROR_METHOD_META(name, name, virtual)
+#define MIRROR_IMAGINARY_METHOD(name) MIRROR_METHOD_META(name, xmethod##name)
 
-namespace Reflection
+namespace Mirror
 {
 	using namespace std;
 
