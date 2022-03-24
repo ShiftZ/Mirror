@@ -50,6 +50,9 @@ namespace Mirror
 		(StlMap<Type> && is_copy_constructible_v<typename Type::mapped_type> && is_copy_constructible_v<typename Type::key_type>) ||
 		is_copy_constructible_v<typename Type::value_type>;
 
+	template<typename Type>
+	concept DefaultConstructible = requires { new Type; };
+
 	template<typename...> struct TypeList;
 
 	class Temporal

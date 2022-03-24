@@ -170,7 +170,7 @@ namespace Mirror
 			type = &typeid(Type);
 			name = Type::Class::RawName();
 			
-			if constexpr (requires{ new Type(); })
+			if constexpr (DefaultConstructible<Type>)
 			{
 				make_default = []()->void* { return new Type(); };
 
