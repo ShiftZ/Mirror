@@ -10,8 +10,8 @@ This library was designed with these goals in mind:
     - multiple and virtual inheritance support
     - in-class member initialization
 - no type limits, all C++ types and containers can be used as properties
-- an option to have custom property getter and setter
-- an option to implement a serializer\deserializer for templated classes (like stl containers) in a general way with the type as a template parameter (explained later)
+- option to have a custom property getter and setter
+- option to implement a serializer\deserializer for templated classes (like stl containers) in a general way with the type as a template parameter (explained later)
 - based on the latest C++ features
 
 Basically, the reflection must be as close to native as possible. The old fashioned reflection libraries typically require out of class definition scope property registrations. If C++ had a reflection, it would have no such external registration requirements.
