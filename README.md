@@ -17,7 +17,7 @@ This library was designed with these goals in mind:
 Basically, the reflection must be as close to native as possible. The old fashioned reflection libraries typically require out of class definition scope property registrations. If C++ had a reflection, it would have no such external registration requirements.
 
 Some implementations lack custom property getters and setters. This is an important thing to have when serializing\deserializing complex classes.
-In OOP getters and setters are used to read and modify the state of an object and for a good reason. In many cases you just can not modify a data field of an object without invalidating the object's state. Deserialization is no different, it must use setters and getters, otherwise it breaks a fundamental OOP principle.
+In OOP getters and setters are used to read and modify the state of an object and for a good reason. In many cases you just can not modify a data field of an object without invalidating the object's state. Deserialization is no different, it must use setters and getters, otherwise it breaks the fundamental OOP principle.
 
 And last but not least, serialization\deserialization of templated types. It would be nice to write a serialization\deserialization of std::vector as a template, instead of writing an individual code for each instance of std::vector. And even more, it would be nice to have an option to write a general serializer\deserializer for all the containers in a single templated function. There is a json sample showing how you can do it.
 
