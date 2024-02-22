@@ -27,7 +27,7 @@
 		using PropertyType = property_type; \
 		using MethodType = method_type; \
 		static const char* RawName() { return #type; } \
-		static string_view Name() { return Mirror::Class::Instance<type>()->Name(); } \
+		static std::string_view Name() { return Mirror::Class::Instance<type>()->Name(); } \
 		static int PropertiesNum() { return Mirror::Class::Instance<type>()->PropertiesNum(); } \
 		static auto Properties() { return Mirror::Class::Instance<type>()->Properties<PropertyType>(); } \
 		static auto Methods() { return Mirror::Class::Instance<type>()->Methods<MethodType>(); } \
