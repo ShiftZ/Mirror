@@ -200,9 +200,9 @@ namespace Mirror
 		auto Methods() const { return span(methods.begin(), methods.end()); }
 
 		// Get property by name
-		const Property* GetProperty(string_view name) const
+		const Property* GetProperty(string_view property_name) const
 		{
-			auto property = prop_map.find(name);
+			auto property = prop_map.find(property_name);
 			return (property != prop_map.end()) ? property->second : nullptr;
 		}
 
@@ -227,9 +227,9 @@ namespace Mirror
 		}
 
 		// Get the first property found of the specified type
-		const Property* GetProperty(type_index type)
+		const Property* GetProperty(type_index property_type)
 		{
-			auto property = type_map.find(type);
+			auto property = type_map.find(property_type);
 			return (property != type_map.end()) ? property->second : nullptr;
 		}
 
@@ -241,9 +241,9 @@ namespace Mirror
 		}
 
 		// Get range of properties of the specified type
-		auto GetProperties(type_index type)
+		auto GetProperties(type_index property_type)
 		{
-			auto range = type_map.equal_range(type);
+			auto range = type_map.equal_range(property_type);
 			return ranges::subrange(range.first, range.second) | views::values;
 		}
 
@@ -264,21 +264,21 @@ namespace Mirror
 		template<typename PropertyType>
 		vector<const PropertyType*> Resolve(string_view path)
 		{
-			vector<const PropertyType*> properties;
+			vector<const PropertyType*> result;
 			size_t size = ranges::count(path, '.');
-			properties.reserve(size + 1);
-			string name;
-			name.reserve(path.size());
+			result.reserve(size + 1);
+			string property_name;
+			property_name.reserve(path.size());
 
 			Class* cls = this;
 			for (size_t off, pos = 0;; pos = off + 1)
 			{
 				off = path.find('.', pos);
-				name.assign(path, pos, off - pos);
-				const PropertyType* property = cls->GetProperty<PropertyType>(name);
+				property_name.assign(path, pos, off - pos);
+				const PropertyType* property = cls->GetProperty<PropertyType>(property_name);
 				if (!property) return {};
-				properties.push_back(property);
-				if (off == string::npos) return properties;
+				result.push_back(property);
+				if (off == string::npos) return result;
 				if (!property->ref_class) return {};
 				cls = property->ref_class;
 			}
@@ -292,9 +292,9 @@ namespace Mirror
 		}
 
 		// Get method by name
-		const Method* GetMethod(string_view name) const
+		const Method* GetMethod(string_view property_name) const
 		{
-			auto method = meth_map.find(name);
+			auto method = meth_map.find(property_name);
 			return (method != meth_map.end()) ? method->second : nullptr;
 		}
 
