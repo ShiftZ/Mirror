@@ -3,22 +3,29 @@
 #include <vector>
 #include <unordered_map>
 #include <optional>
-#include <cassert>
 #include <format>
 
-#define MIRROR_ENUM(type, ...) __VA_ARGS__ }; \
-	MIRROR_FORCEDSPEC inline void xmirror_##type() \
+#define MIRROR_ENUM(_Type_, _Storage_, ...) __VA_ARGS__ }; \
+	struct xmirror_##_Type_##_meta \
 	{ \
-		void* execute = &Mirror::StaticInstance<Mirror::Executor<&xmirror_##type>>::instance; \
 		struct Values { int64_t __VA_ARGS__; }; \
-		Mirror::Enum<type>::Instance().Construct<Values>(#type, #__VA_ARGS__);
+		static inline _Storage_ Mirror::TEnum<_Type_, Values> instance = Mirror::TEnum<_Type_, Values>(#_Type_, #__VA_ARGS__); \
+	}; \
+	MIRROR_FORCEDSPEC static void* xmirror_##_Type_##_constructor() \
+	{ \
+		Mirror::Enum<_Type_>::instance = &xmirror_##_Type_##_meta::instance; \
+		return &Mirror::StaticInstance<Mirror::Executor<&xmirror_##_Type_##_constructor>>::instance;
 
-#define MIRROR_ENUM_EXTERNAL(type, ...) \
-	MIRROR_FORCEDSPEC inline void xmirror_##type() \
+#define MIRROR_ENUM_EXTERNAL(_Type_, _Storage_, ...) \
+	struct xmirror_##_Type_##_meta \
 	{ \
-		void* execute = &Mirror::StaticInstance<Mirror::Executor<&xmirror_##type>>::instance; \
 		struct Values { int64_t __VA_ARGS__; }; \
-		Mirror::Enum<type>::Instance().Construct<Values>(#type, #__VA_ARGS__); \
+		static inline _Storage_ Mirror::TEnum<_Type_, Values> instance = Mirror::TEnum<_Type_, Values>(#_Type_, #__VA_ARGS__); \
+	}; \
+	MIRROR_FORCEDSPEC static void* xmirror_##_Type_##_constructor() \
+	{ \
+		Mirror::Enum<_Type_>::instance = &xmirror_##_Type_##_meta::instance; \
+		return &Mirror::StaticInstance<Mirror::Executor<&xmirror_##_Type_##_constructor>>::instance; \
 	}
 
 namespace Mirror
@@ -34,14 +41,75 @@ namespace Mirror
 		unordered_map<string_view, Type> to_enum;
 		unordered_map<Type, string_view> to_string;
 
-		static Enum& Instance()
+		static inline Enum* instance;
+
+		// Convert value to string. Throws if value is invalid.
+		static string_view ToString(Type value)
 		{
-			static Enum<Type> instance;
-			return instance;
+			auto str = instance->to_string.find(value);
+			if (str == instance->to_string.end())
+				throw logic_error(format("{} enum: invalid ToString conversion of ({})", instance->name, int(value)));
+			return str->second;
 		}
 
-		template<typename ValuesType>
-		void Construct(string_view name, string_view text)
+		// Conver value to string. Doesn't throw.
+		static optional<string_view> GetString(Type value)
+		{
+			auto str = instance->to_string.find(value);
+			return (str != instance->to_string.end()) ? optional(str->second) : nullopt;
+		}
+
+		// Get value by name. Throws if name is invalid
+		static Type ToValue(string_view name)
+		{
+			auto val = instance->to_enum.find(name);
+			if (val == instance->to_enum.end())
+				throw logic_error(format("{} enum: invalid ToValue conversion of '{}'", instance->name, name));
+			return val->second;
+		}
+
+		// Get value by name. Doesn't throw
+		static optional<Type> GetValue(string_view name)
+		{
+			auto val = instance->to_enum.find(name);
+			return (val != instance->to_enum.end()) ? optional(val->second) : nullopt;
+		}
+
+		// Check if name is valid
+		static bool IsValue(string_view name)
+		{
+			return instance->to_enum.contains(name);
+		}
+
+		// Get name of the enum
+		static string_view GetName() { return instance->name; }
+
+		// Get span of enum value names
+		static auto GetNames()
+		{
+			return span(instance->names.begin(), instance->names.end());
+		}
+
+		// Get span of enum values
+		static auto GetValues()
+		{
+			return span(instance->values.begin(), instance->values.end());
+		}
+
+		// Get pairs of {name, value}
+		static auto GetPairs()
+		{
+			return views::all(instance->to_enum);
+		}
+
+		// Get number of enum values
+		static int Num() { return instance->values.size(); }
+	};
+
+	template<typename Type, typename ValuesType>
+	struct TEnum : Enum<Type>
+	{
+		TEnum(string_view name, string_view text)
 		{
 			this->name = name;
 
@@ -65,85 +133,21 @@ namespace Mirror
 				off = text.find_first_not_of(", ", off);
 				if (off == string::npos) break;
 				next = text.find_first_of(" =,", off);
-				string name(text.substr(off, next != string::npos ? next - off : string::npos));
+				string_view ename(text.substr(off, next != string::npos ? next - off : string::npos));
 				off = text.find(',', next);
 
-				names.push_back(name);
+				this->names.emplace_back(ename);
 			}
-
-			assert(names.size() == num);
 
 			for (int i = 0; i < num; i++)
 			{
 				Type value = Type(vals[i]);
-				values.push_back(value);
-				to_enum.emplace(names[i], value);
-				to_string.emplace(value, names[i]);
+				this->values.push_back(value);
+				this->to_enum.emplace(this->names[i], value);
+				this->to_string.emplace(value, this->names[i]);
 			}
+
+			this->instance = this;
 		}
-
-		// Convert value to string. Throws if value is invalid.
-		static string_view ToString(Type value)
-		{
-			Enum& meta = Instance();
-			auto str = meta.to_string.find(value);
-			if (str == meta.to_string.end())
-				throw std::logic_error(std::format("{} enum: invalid ToString conversion of ({})", meta.name, int(value)));
-			return str->second;
-		}
-
-		// Conver value to string. Doesn't throw.
-		static optional<string_view> GetString(Type value)
-		{
-			auto str = Instance().to_string.find(value);
-			return (str != Instance().to_string.end()) ? optional(str->second) : std::nullopt;
-		}
-
-		// Get value by name. Throws if name is invalid
-		static Type ToValue(string_view name)
-		{
-			Enum& meta = Instance();
-			auto val = meta.to_enum.find(name);
-			if (val == meta.to_enum.end())
-				throw std::logic_error(std::format("{} enum: invalid ToValue conversion of '{}'", meta.name, name));
-			return val->second;
-		}
-
-		// Get value by name. Doesn't throw
-		static optional<Type> GetValue(string_view name)
-		{
-			auto val = Instance().to_enum.find(name);
-			return (val != Instance().to_enum.end()) ? optional(val->second) : std::nullopt;
-		}
-
-		// Check if name is valid
-		static bool IsValue(string_view name)
-		{
-			return Instance().to_enum.contains(name);
-		}
-
-		// Get name of the enum
-		static string_view GetName() { return Instance().name; }
-
-		// Get span of enum value names
-		static auto GetNames()
-		{
-			return span(Instance().names.begin(), Instance().names.end());
-		}
-
-		// Get span of enum values
-		static auto GetValues()
-		{
-			return span(Instance().values.begin(), Instance().values.end());
-		}
-
-		// Get pairs of {name, value}
-		static auto GetPairs()
-		{
-			return views::all(Instance().to_enum);
-		}
-
-		// Get number of enum values
-		static int Num() { return Instance().values.size(); }
 	};
 }

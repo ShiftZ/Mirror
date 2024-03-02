@@ -4,27 +4,23 @@
 #include <type_traits>
 #include <format>
 
-#define MIRROR_METHOD_META(name, native_name, ...) \
-	xproperty_##name##_type(); \
-	struct xproperty_##name##_meta \
+#define MIRROR_METHOD_META(_Name_, _NativeName_, _Storage_, ...) \
+	xproperty_##_Name_##_type(); \
+	struct xproperty_##_Name_##_meta \
 	{ \
 		using Scope = Class::Type; \
-		string_view Name() { return #name; } \
-		auto Func() { return &Class::Type::native_name; } \
-		MIRROR_FORCEDSPEC static void Register() \
-		{ \
-			Mirror::StaticInstance<Mirror::Executor<&Register>>::instance; \
-			xproperty_##name##_meta meta; \
-			Class::MethodType* m = new Class::MethodType(&meta); \
-			Mirror::Class::Instance<Class::Type>()->AddMethod(m); \
-		} \
+		static std::string_view Name() { using namespace std::literals; return #_Name_##sv; } \
+		static auto Func() { return &Class::Type::_NativeName_; } \
+		_Storage_ static inline const Mirror::Constructor constructor = +[] \
+			{ Class::Construct()->AddMethod(new Class::MethodType((xproperty_##_Name_##_meta*)nullptr)); }; \
 	}; \
-	friend struct xproperty_##name##_meta; \
-	__VA_ARGS__ std::invoke_result_t<decltype(&Class::Type::xproperty_##name##_type), Class::Type> native_name
+	static MIRROR_FORCEDSPEC auto xmirror_##_NativeName_##_constructor() { return &xproperty_##_Name_##_meta::constructor; } \
+	friend struct xproperty_##_Name_##_meta; \
+	__VA_ARGS__ std::invoke_result_t<decltype(&Class::Type::xproperty_##_Name_##_type), Class::Type> _NativeName_
 
-#define MIRROR_METHOD(name) MIRROR_METHOD_META(name, name)
-#define MIRROR_VIRTUAL_METHOD(name) MIRROR_METHOD_META(name, name, virtual)
-#define MIRROR_IMAGINARY_METHOD(name) MIRROR_METHOD_META(name, xmethod##name)
+#define MIRROR_METHOD(_Name_, _Storage_) MIRROR_METHOD_META(_Name_, _Name_, _Storage_)
+#define MIRROR_VIRTUAL_METHOD(_Name_, _Storage_) MIRROR_METHOD_META(_Name_, _Name_, _Storage_, virtual)
+#define MIRROR_IMAGINARY_METHOD(_Name_, _Storage_) MIRROR_METHOD_META(_Name_, xmethod##name, _Storage_)
 
 namespace Mirror
 {
@@ -89,8 +85,8 @@ namespace Mirror
 		Method(Return (Object::*method)(Args ...)) : signature(typeid(Return (Args ...)))
 		{
 			(decltype(method)&)func = method;
-			auto invoker = &Method::Invoker<Return, Object, Args...>;
-			this->invoker = *(InvokerFunc*)&invoker;
+			auto _invoker = &Method::Invoker<Return, Object, Args...>;
+			invoker = *(InvokerFunc*)&_invoker;
 			num_args = sizeof...(Args);
 		}
 

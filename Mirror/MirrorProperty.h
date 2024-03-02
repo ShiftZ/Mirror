@@ -7,58 +7,51 @@
 
 #include "MirrorTools.h"
 
-#define MIRROR_PROPERTY(property, ...) \
-	MIRROR_PROPERTY_DATA(property, __VA_ARGS__); \
-	decltype(Mirror::GetReturnType(&Class::Type::xproperty_##property##_type)) property
+#define MIRROR_PROPERTY(_Property_, _Storage_, ...) \
+	MIRROR_PROPERTY_DATA(_Property_, _Storage_, __VA_ARGS__); \
+	decltype(Mirror::GetReturnType(&Class::Type::xproperty_##_Property_##_type)) _Property_
 
-#define MIRROR_PROPERTY_DATA(property, ...) \
-	xproperty_##property##_type(); \
-	struct xproperty_##property##_meta \
+#define MIRROR_PROPERTY_DATA(_Property_, _Storage_, ...) \
+	xproperty_##_Property_##_type(); \
+	struct xproperty_##_Property_##_meta \
 	{ \
-		using Type = decltype(Mirror::GetReturnType(&Class::Type::xproperty_##property##_type)); \
+		using Type = decltype(Mirror::GetReturnType(&Class::Type::xproperty_##_Property_##_type)); \
 		using Scope = Class::Type; \
-		template<typename Type> \
+		template<typename ClassType> \
 		struct BasicAccess \
 		{ \
-			static void* Get(void* ptr) { return &((Class::Type*)ptr)->property; } \
-			static void Set(void* domain, void* value) { ((Class::Type*)domain)->property = *(Type*)value; } \
-			static void Move(void* domain, void* value) { ((Class::Type*)domain)->property = std::move(*(Type*)value); } \
-			static string_view Text() { return ""; } \
+			static void* Get(void* ptr) { return &((ClassType*)ptr)->_Property_; } \
+			static void Set(void* ptr, void* value) { ((ClassType*)ptr)->_Property_ = *(Type*)value; } \
+			static void Move(void* ptr, void* value) { ((ClassType*)ptr)->_Property_ = std::move(*(Type*)value); } \
+			static std::string_view Text() { return {}; } \
 		}; \
-		struct Access : public BasicAccess<Type> { __VA_ARGS__ }; \
-		string_view Name() { return #property; } \
-		MIRROR_FORCEDSPEC static void Register() \
-		{ \
-			Mirror::StaticInstance<Mirror::Executor<&Register>>::instance; \
-			xproperty_##property##_meta meta; \
-			Class::PropertyType* p = new Class::PropertyType(&meta); \
-			Mirror::Class::Instance<Class::Type>()->AddProperty(p); \
-		} \
+		struct Access : BasicAccess<Class::Type> { __VA_ARGS__ }; \
+		static std::string_view Name() { using namespace std::literals; return #_Property_##sv; } \
+		_Storage_ static inline const Mirror::Constructor constructor = +[] \
+			{ Class::Construct()->AddProperty(new Class::PropertyType((xproperty_##_Property_##_meta*)nullptr)); }; \
 	}; \
-	friend struct xproperty_##property##_meta
+	static MIRROR_FORCEDSPEC auto xmirror_##_Property_##_register() { return &xproperty_##_Property_##_meta::constructor; } \
+	friend struct xproperty_##_Property_##_meta
 
-#define MIRROR_VIRTUAL_PROPERTY(property, ...) \
-	xproperty_##property##_type(); \
-	struct xproperty_##property##_meta \
+#define MIRROR_VIRTUAL_PROPERTY(_Property_, _Storage_, ...) \
+	xproperty_##_Property_##_type(); \
+	struct xproperty_##_Property_##_meta \
 	{ \
-		using Type = std::invoke_result_t<decltype(&Class::Type::xproperty_##property##_type), Class::Type>; \
+		using Type = std::invoke_result_t<decltype(&Class::Type::xproperty_##_Property_##_type), Class::Type>; \
 		using Scope = Class::Type; \
 		struct InvalidAccess \
 		{ \
 			static void Get(); \
 			static void Set(); \
 			static void Move(); \
-			static string_view Text() { return ""; } \
+			static std::string_view Text() { return {}; } \
 		}; \
 		struct Access : public InvalidAccess { __VA_ARGS__ }; \
-		string_view Name() { return #property; } \
-		MIRROR_FORCEDSPEC static void Register() \
-		{ \
-			Mirror::StaticInstance<Mirror::Executor<&Register>>::instance; \
-			xproperty_##property##_meta meta; \
-			Mirror::Class::Instance<Class::Type>()->AddProperty(new Class::PropertyType(&meta)); \
-		} \
-	}
+		static std::string_view Name() { using namespace std::literals; return #_Property_##sv; } \
+		_Storage_ static inline const Mirror::Constructor constructor = +[] \
+			{ Class::Construct()->AddProperty(new Class::PropertyType((xproperty_##_Property_##_meta*)nullptr)); }; \
+	}; \
+	static MIRROR_FORCEDSPEC auto xmirror_##_Property_##_register() { return &xproperty_##_Property_##_meta::constructor; } \
 
 #define MIRROR_GETTER(getter) \
 	static void* Get(void* ptr) { return Gett((Class::Type*)ptr, &Class::Type::getter); } \
@@ -75,11 +68,13 @@
 	static void Move(void* domain, void* value) { ((Class::Type*)domain)->mover(std::move(*(Type*)value)); }
 
 #define MIRROR_TEXT(txt) \
-	static string_view Text() { return txt; }
+	static std::string_view Text() { return txt; }
 
 namespace Mirror
 {
 	using namespace std;
+
+	enum { IntegralType = 1<<1, FloatingType = 1<<2, EnumType = 1<<3, ClassType = 1<<4 };
 
 	using Getter = void* (*)(void*);
 	using Setter = void (*)(void*, void*);

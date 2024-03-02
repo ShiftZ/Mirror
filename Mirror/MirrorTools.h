@@ -15,14 +15,19 @@ namespace Mirror
 	template<typename Type>
 	Type StaticInstance<Type>::instance;
 
-	template<void (*Func)()>
+	template<void* (*Func)()>
 	struct Executor
 	{
 		Executor() { Func(); }
 	};
 
+	struct Constructor
+	{
+		Constructor(void (*func)()) { func(); }
+	};
+
 	template<typename Type>
-	concept Mirrored = requires { Type::Class; };
+	concept Mirrored = requires { typename Type::Class; };
 
 	template<typename Type>
 	concept StlContainer = requires (Type& c)

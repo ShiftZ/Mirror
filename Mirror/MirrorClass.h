@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <span>
 #include <ranges>
+#include <optional>
 
 #include "MirrorProperty.h"
 #include "MirrorMethod.h"
@@ -17,40 +18,42 @@
 #	define MIRROR_FORCEDSPEC [[noinline]]
 #endif
 
-#define MIRROR_CLASS(property_type, method_type, type, ...) MIRROR_STRUCT(property_type, method_type, type, __VA_ARGS__) private:
-#define MIRROR_STRUCT(property_type, method_type, type, ...) \
+#define MIRROR_CLASS(_Type_, _PropertyType_, _MethodType_, _Storage_, ...) \
+	MIRROR_STRUCT(_Type_, _PropertyType_, _MethodType_, _Storage_, __VA_ARGS__) private:
+
+#define MIRROR_STRUCT(_Type_, _PropertyType_, _MethodType_, _Storage_, ...) \
 	public: \
-	using BaseList = Mirror::GetBaseList<type __VA_ARGS__>; \
+	using BaseList = Mirror::GetBaseList<_Type_ __VA_ARGS__>; \
 	struct Class \
 	{ \
-		using Type = type; \
-		using PropertyType = property_type; \
-		using MethodType = method_type; \
-		static const char* RawName() { return #type; } \
-		static std::string_view Name() { return Mirror::Class::Instance<type>()->Name(); } \
-		static int PropertiesNum() { return Mirror::Class::Instance<type>()->PropertiesNum(); } \
-		static auto Properties() { return Mirror::Class::Instance<type>()->Properties<PropertyType>(); } \
-		static auto Methods() { return Mirror::Class::Instance<type>()->Methods<MethodType>(); } \
-		static const PropertyType* GetProperty(const std::string& name) { return Mirror::Class::Instance<type>()->GetProperty<PropertyType>(name); } \
-		static const PropertyType* GetProperty(std::type_index t) { return Mirror::Class::Instance<type>()->GetProperty<PropertyType>(t); } \
-		static const PropertyType* GetProperty(int index) { return Mirror::Class::Instance<type>()->GetProperty<PropertyType>(index); } \
-		static std::vector<const Mirror::Property*> Resolve( const std::string& path ) { return Mirror::Class::Instance<type>()->Resolve(path); } \
+		_Storage_ static inline std::optional<Mirror::TClass<_Type_>> cls; \
+		_Storage_ static inline const Mirror::Constructor constructor = +[]{ if (!cls) cls.emplace(); }; \
+		using Type = _Type_; \
+		using PropertyType = _PropertyType_; \
+		using MethodType = _MethodType_; \
+		static const char* RawName() { return #_Type_; } \
+		static std::string_view Name() { return cls->Name(); } \
+		static int PropertiesNum() { return cls->PropertiesNum(); } \
+		static int MethodsNum() { return cls->MethodsNum(); } \
+		static auto Properties() { return cls->Properties<PropertyType>(); } \
+		static auto Methods() { return cls->Methods<MethodType>(); } \
+		static const PropertyType* GetProperty(std::string_view name) { return cls->GetProperty<PropertyType>(name); } \
+		static const PropertyType* GetProperty(std::type_index t) { return cls->GetProperty<PropertyType>(t); } \
+		static const PropertyType* GetProperty(int index) { return cls->GetProperty<PropertyType>(index); } \
+		static std::vector<const Mirror::Property*> Resolve(const std::string& path) { return cls->Resolve(path); } \
 		template<typename PropertyType> \
-		static std::vector<const PropertyType*> Resolve(const std::string& path) { return Mirror::Class::Instance<type>()->Resolve<PropertyType>(path); } \
-		static const MethodType* GetMethod(const std::string& name) { return Mirror::Class::Instance<type>()->GetMethod<const MethodType>(name); } \
-		static auto GetHeirs() { return Mirror::Class::Instance<type>()->GetHeirs(); } \
-		static auto GetBases() { return Mirror::Class::Instance<type>()->GetBases(); } \
-		static Mirror::Class* GetClass() { return Mirror::Class::Instance<type>(); } \
+		static std::vector<const PropertyType*> Resolve(std::string_view path) { return cls->Resolve<PropertyType>(path); } \
+		static const MethodType* GetMethod(const std::string_view name) { return cls->GetMethod<const MethodType>(name); } \
+		static auto GetHeirs() { return cls->GetHeirs(); } \
+		static auto GetBases() { return cls->GetBases(); } \
+		static Mirror::Class* GetClass() { return &cls.value(); } \
+		static Mirror::Class* Construct() { if (!cls) cls.emplace(); return &cls.value(); } \
 		static Mirror::Property* Copy(const Mirror::Property* p) { return new PropertyType(*dynamic_cast<const PropertyType*>(p)); } \
 		static Mirror::Method* Copy(const Mirror::Method* m) { return new MethodType(*dynamic_cast<const MethodType*>(m)); } \
 	}; \
-	Mirror::Class* GetClass() const { return Mirror::Class::Instance<type>(); } \
+	Mirror::Class* GetClass() const { return &Class::cls.value(); } \
 	void* GetThis() const { return (void*)this; } \
-	static MIRROR_FORCEDSPEC void xmirror_class() \
-	{ \
-		Mirror::StaticInstance<Mirror::Executor<&xmirror_class>>::instance; \
-		Mirror::Class::Instance<type>(); \
-	}
+	static MIRROR_FORCEDSPEC auto xmirror_class() { return &Class::constructor; }
 
 #define MIRROR_MULTIBASE(...) , Mirror::TypeList<__VA_ARGS__>
 
@@ -90,6 +93,7 @@ namespace Mirror
 
 	class Class
 	{
+	protected:
 		const type_info* type;
 		vector<const Property*> properties;
 		vector<const Method*> methods;
@@ -105,13 +109,13 @@ namespace Mirror
 		void* (*make_default)() = nullptr;
 		IMirror* (*make_reflected)() = nullptr;
 
-	private:
+	protected:
 		template<typename Type, typename Base, typename... Others>
 		void Construct(TypeList<Base, Others...>*, int level = 0)
 		{
 			Construct<Type>((typename Base::BaseList*)nullptr, level - 1);
 
-			Class* base = Class::Instance<Base>();
+			Class* base = Base::Class::Construct();
 			if (ranges::find(base->heirs, this) == base->heirs.end())
 			{
 				void* (*caster)(void*) = nullptr;
@@ -155,32 +159,6 @@ namespace Mirror
 		void Construct(TypeList<>*, int = 0) {}
 
 	public:
-		template<typename Type>
-		static Class* Instance()
-		{
-			static Class* instance = nullptr;
-			if (!instance) instance = new Class((Type*)nullptr);
-			return instance;
-		}
-
-	public:
-		template<typename Type>
-		Class(Type* = nullptr)
-		{
-			type = &typeid(Type);
-			name = Type::Class::RawName();
-			
-			if constexpr (DefaultConstructible<Type>)
-			{
-				make_default = []()->void* { return new Type(); };
-
-				if constexpr (is_base_of_v<IMirror, Type>)
-					make_reflected = []()->IMirror* { return new Type(); };
-			}
-
-			Construct<Type>((typename Type::BaseList*)nullptr);
-		}
-
 		// Type name
 		string_view Name() const { return name; }
 
@@ -324,13 +302,13 @@ namespace Mirror
 				PropertyType* copy = new PropertyType(*property);
 				copy->caster = casters[*heir];
 
-				auto& properties = (*heir)->properties;
-				auto place = ranges::find_if(properties.rbegin(), properties.rend(), [&](auto& p){ return p->scope.type == type; }).base();
-				if (place == properties.begin())
+				auto& _properties = (*heir)->properties;
+				auto place = ranges::find_if(_properties.rbegin(), _properties.rend(), [&](auto& p){ return p->scope.type == type; }).base();
+				if (place == _properties.begin())
 				{
-					place = properties.end();
-					for (auto it = heirs.begin(); place == properties.end() && it != heir + 1; ++it)
-						place = ranges::find_if(properties, [&](auto& p){ return p->scope.type == (*it)->type; });
+					place = _properties.end();
+					for (auto it = heirs.begin(); place == _properties.end() && it != heir + 1; ++it)
+						place = ranges::find_if(_properties, [&](auto& p){ return p->scope.type == (*it)->type; });
 				}
 
 				(*heir)->prop_map.emplace(copy->name, copy);
@@ -351,13 +329,13 @@ namespace Mirror
 				MethodType* copy = new MethodType(*method);
 				copy->caster = casters[*heir];
 
-				auto& methods = (*heir)->methods;
-				auto place = ranges::find_if(methods.rbegin(), methods.rend(), [&](auto& p){ return p->scope.type == type; }).base();
-				if (place == methods.begin())
+				auto& _methods = (*heir)->methods;
+				auto place = ranges::find_if(_methods.rbegin(), _methods.rend(), [&](auto& p){ return p->scope.type == type; }).base();
+				if (place == _methods.begin())
 				{
-					place = methods.end();
-					for (auto it = heirs.begin(); place == methods.end() && it != heir + 1; ++it)
-						place = find_if(methods.begin(), methods.end(), [&](auto& p){ return p->scope.type == (*it)->type; });
+					place = _methods.end();
+					for (auto it = heirs.begin(); place == _methods.end() && it != heir + 1; ++it)
+						place = find_if(_methods.begin(), _methods.end(), [&](auto& p){ return p->scope.type == (*it)->type; });
 				}
 
 				(*heir)->meth_map.emplace(copy->name, copy);
@@ -415,6 +393,27 @@ namespace Mirror
 			pdst->setter(pdst->GetScope(dst), value);
 		}
 	}
+
+	template< typename Type >
+	class TClass : public Class
+	{
+	public:
+		TClass()
+		{
+			type = &typeid(Type);
+			name = Type::Class::RawName();
+			
+			if constexpr (DefaultConstructible<Type>)
+			{
+				make_default = []()->void* { return new Type(); };
+
+				if constexpr (is_base_of_v<IMirror, Type>)
+					make_reflected = []()->IMirror* { return new Type(); };
+			}
+
+			Construct<Type>((typename Type::BaseList*)nullptr);
+		}
+	};
 
 	// Set value by name
 	template<typename Type, typename ValueType>
