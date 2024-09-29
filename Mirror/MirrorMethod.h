@@ -8,15 +8,15 @@
 	xproperty_##_Name_##_type(); \
 	struct xproperty_##_Name_##_meta \
 	{ \
-		using Scope = Class::Type; \
+		using Scope = Meta::Type; \
 		static std::string_view Name() { using namespace std::literals; return #_Name_##sv; } \
-		static auto Func() { return &Class::Type::_NativeName_; } \
+		static auto Func() { return &Meta::Type::_NativeName_; } \
 		_Storage_ static inline const Mirror::Constructor constructor = +[] \
-			{ Class::Construct()->AddMethod(new Class::MethodType((xproperty_##_Name_##_meta*)nullptr)); }; \
+			{ Meta::Construct()->AddMethod(new Meta::MethodType((xproperty_##_Name_##_meta*)nullptr)); }; \
 	}; \
 	static MIRROR_FORCEDSPEC auto xmirror_##_NativeName_##_constructor() { return &xproperty_##_Name_##_meta::constructor; } \
 	friend struct xproperty_##_Name_##_meta; \
-	__VA_ARGS__ std::invoke_result_t<decltype(&Class::Type::xproperty_##_Name_##_type), Class::Type> _NativeName_
+	__VA_ARGS__ std::invoke_result_t<decltype(&Meta::Type::xproperty_##_Name_##_type), Meta::Type> _NativeName_
 
 #define MIRROR_METHOD(_Name_, _Storage_) MIRROR_METHOD_META(_Name_, _Name_, _Storage_)
 #define MIRROR_VIRTUAL_METHOD(_Name_, _Storage_) MIRROR_METHOD_META(_Name_, _Name_, _Storage_, virtual)
@@ -76,9 +76,9 @@ namespace Mirror
 		{
 			name = meta->Name();
 			type = &typeid(decltype(meta->Func()));
-			scope.name = MethodMeta::Scope::Class::Name();
+			scope.name = MethodMeta::Scope::Meta::Name();
 			scope.type = &typeid(typename MethodMeta::Scope);
-			copy = MethodMeta::Scope::Class::Copy;
+			copy = MethodMeta::Scope::Meta::Copy;
 		}
 
 		template<typename Return, typename Object, typename... Args>

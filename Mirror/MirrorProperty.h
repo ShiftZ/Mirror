@@ -9,26 +9,26 @@
 
 #define MIRROR_PROPERTY(_Property_, _Storage_, ...) \
 	MIRROR_PROPERTY_DATA(_Property_, _Storage_, __VA_ARGS__); \
-	decltype(Mirror::GetReturnType(&Class::Type::xproperty_##_Property_##_type)) _Property_
+	decltype(Mirror::GetReturnType(&Meta::Type::xproperty_##_Property_##_type)) _Property_
 
 #define MIRROR_PROPERTY_DATA(_Property_, _Storage_, ...) \
 	xproperty_##_Property_##_type(); \
 	struct xproperty_##_Property_##_meta \
 	{ \
-		using Type = decltype(Mirror::GetReturnType(&Class::Type::xproperty_##_Property_##_type)); \
-		using Scope = Class::Type; \
+		using Type = decltype(Mirror::GetReturnType(&Meta::Type::xproperty_##_Property_##_type)); \
+		using Scope = Meta::Type; \
 		template<typename ClassType> \
 		struct BasicAccess \
 		{ \
-			static void* Get(void* ptr) { return &((ClassType*)ptr)->_Property_; } \
-			static void Set(void* ptr, void* value) { ((ClassType*)ptr)->_Property_ = *(Type*)value; } \
-			static void Move(void* ptr, void* value) { ((ClassType*)ptr)->_Property_ = std::move(*(Type*)value); } \
-			static std::string_view Text() { return {}; } \
+			static void* Get(void* obj) { return &((ClassType*)obj)->_Property_; } \
+			static void Set(void* obj, void* value) { ((ClassType*)obj)->_Property_ = *(Type*)value; } \
+			static void Move(void* obj, void* value) { ((ClassType*)obj)->_Property_ = std::move(*(Type*)value); } \
+			static void* Pointer(void* obj) { return &((ClassType*)obj)->_Property_; } \
 		}; \
-		struct Access : BasicAccess<Class::Type> { __VA_ARGS__ }; \
+		struct Access : BasicAccess<Meta::Type> { __VA_ARGS__ }; \
 		static std::string_view Name() { using namespace std::literals; return #_Property_##sv; } \
-		_Storage_ static inline const Mirror::Constructor constructor = +[] \
-			{ Class::Construct()->AddProperty(new Class::PropertyType((xproperty_##_Property_##_meta*)nullptr)); }; \
+		_Storage_ static inline const Mirror::Constructor constructor = \
+			+[]{ Meta::Construct()->AddProperty(new Meta::PropertyType((xproperty_##_Property_##_meta*)nullptr)); }; \
 	}; \
 	static MIRROR_FORCEDSPEC auto xmirror_##_Property_##_register() { return &xproperty_##_Property_##_meta::constructor; } \
 	friend struct xproperty_##_Property_##_meta
@@ -37,35 +37,28 @@
 	xproperty_##_Property_##_type(); \
 	struct xproperty_##_Property_##_meta \
 	{ \
-		using Type = std::invoke_result_t<decltype(&Class::Type::xproperty_##_Property_##_type), Class::Type>; \
-		using Scope = Class::Type; \
-		struct InvalidAccess \
-		{ \
-			static void Get(); \
-			static void Set(); \
-			static void Move(); \
-			static std::string_view Text() { return {}; } \
-		}; \
-		struct Access : public InvalidAccess { __VA_ARGS__ }; \
+		using Type = std::invoke_result_t<decltype(&Meta::Type::xproperty_##_Property_##_type), Meta::Type>; \
+		using Scope = Meta::Type; \
+		struct Access { __VA_ARGS__ }; \
 		static std::string_view Name() { using namespace std::literals; return #_Property_##sv; } \
-		_Storage_ static inline const Mirror::Constructor constructor = +[] \
-			{ Class::Construct()->AddProperty(new Class::PropertyType((xproperty_##_Property_##_meta*)nullptr)); }; \
+		_Storage_ static inline const Mirror::Constructor constructor = \
+			+[]{ Meta::Construct()->AddProperty(new Meta::PropertyType((xproperty_##_Property_##_meta*)nullptr)); }; \
 	}; \
 	static MIRROR_FORCEDSPEC auto xmirror_##_Property_##_register() { return &xproperty_##_Property_##_meta::constructor; } \
 
 #define MIRROR_GETTER(getter) \
-	static void* Get(void* ptr) { return Gett((Class::Type*)ptr, &Class::Type::getter); } \
+	static void* Get(void* ptr) { return Gett((Meta::Type*)ptr, &Meta::Type::getter); } \
 	template<typename Type> \
 	static void* Gett(Type* ptr, ...) { return (void*)&ptr->getter(); } \
-	static void* Gett(Class::Type* ptr, Type (Class::Type::*)() const) { return Mirror::Temporal::Make<Type>(ptr->getter()); } \
-	static void* Gett(Class::Type* ptr, Type (Class::Type::*)()) { return Mirror::Temporal::Make<Type>(ptr->getter()); }
+	static void* Gett(Meta::Type* ptr, Type (Meta::Type::*)() const) { return Mirror::Temporal::Make<Type>(ptr->getter()); } \
+	static void* Gett(Meta::Type* ptr, Type (Meta::Type::*)()) { return Mirror::Temporal::Make<Type>(ptr->getter()); }
 
 #define MIRROR_SETTER(setter) \
-	static void Set(void* domain, void* value) { ((Class::Type*)domain)->setter(*(Type*)value); } \
-	static void Move(void* domain, void* value) { ((Class::Type*)domain)->setter(*(Type*)value); }
+	static void Set(void* domain, void* value) { ((Meta::Type*)domain)->setter(*(Type*)value); } \
+	static void Move(void* domain, void* value) { ((Meta::Type*)domain)->setter(*(Type*)value); }
 
 #define MIRROR_MOVER(mover) \
-	static void Move(void* domain, void* value) { ((Class::Type*)domain)->mover(std::move(*(Type*)value)); }
+	static void Move(void* domain, void* value) { ((Meta::Type*)domain)->mover(std::move(*(Type*)value)); }
 
 #define MIRROR_TEXT(txt) \
 	static std::string_view Text() { return txt; }
@@ -73,12 +66,6 @@
 namespace Mirror
 {
 	using namespace std;
-
-	enum { IntegralType = 1<<1, FloatingType = 1<<2, EnumType = 1<<3, ClassType = 1<<4 };
-
-	using Getter = void* (*)(void*);
-	using Setter = void (*)(void*, void*);
-	using Mover = void (*)(void*, void*);
 
 	class Property
 	{
@@ -90,13 +77,15 @@ namespace Mirror
 		friend class Class;
 
 	public:
-		Getter getter = nullptr;
-		Setter setter = nullptr;
-		Mover mover = nullptr;
-		any (*getany)( void* ) = nullptr;
+		void* (*getter)(void*) = nullptr;
+		void (*setter)(void*, void*) = nullptr;
+		void (*mover)(void*, void*) = nullptr;
+		void* (*pointer)(void*) = nullptr;
+		any (*getany)(void*) = nullptr;
 
 		string_view name;
 		const type_info* type;
+		size_t size;
 		Class* ref_class = nullptr;
 		type_index type_id;
 		bool copy_constructible, copy_assignable;
@@ -114,35 +103,41 @@ namespace Mirror
 		template<typename PropertyMeta>
 		Property(PropertyMeta* meta) :
 			type_id(typeid(typename PropertyMeta::Type)),
-			scope{PropertyMeta::Scope::Class::RawName(), &typeid(typename PropertyMeta::Scope), typeid(typename PropertyMeta::Scope)}
+			scope{PropertyMeta::Scope::Meta::RawName(), &typeid(typename PropertyMeta::Scope), typeid(typename PropertyMeta::Scope)}
 		{
 			using Type = typename PropertyMeta::Type;
+			using Access = typename PropertyMeta::Access;
 
 			name = meta->Name();
 			type = &typeid(Type);
+			size = sizeof(Type);
 
 			if constexpr (Mirrored<Type>)
-				ref_class = Type::Class::GetClass();
+				ref_class = Type::Meta::GetClass();
 
-			if constexpr (is_convertible_v<decltype(&PropertyMeta::Access::Get), Getter>)
-				getter = &PropertyMeta::Access::Get;
+			if constexpr (requires{ getter = &Access::Get; })
+				getter = &Access::Get;
 
-			if constexpr (CopyAssignable<Type> && is_convertible_v<decltype(&PropertyMeta::Access::Set), Setter>)
-				setter = &PropertyMeta::Access::Set;
+			if constexpr (CopyAssignable<Type> && requires{ setter = &Access::Set; })
+				setter = &Access::Set;
 
-			if constexpr (is_move_assignable_v<Type> && is_convertible_v<decltype(&PropertyMeta::Access::Move), Mover>)
-				mover = &PropertyMeta::Access::Move;
+			if constexpr (is_move_assignable_v<Type> && requires{ mover = &Access::Move; })
+				mover = &Access::Move;
+
+			if constexpr (requires{ pointer = &Access::Pointer; })
+				pointer = &Access::Pointer;
 
 			if constexpr (CopyConstructible<Type>)
 				getany = [](void* ptr){ return make_any<Type>(*(Type*)ptr); };
 
+			if constexpr (requires{ meta_text = Access::Text(); })
+				meta_text = Access::Text();
+
 			castany = [](const any& value) -> void* { return (void*)&any_cast<const Type&>(value); };
-			copy = PropertyMeta::Scope::Class::Copy;
+			copy = PropertyMeta::Scope::Meta::Copy;
 
 			copy_constructible = CopyConstructible<Type>;
 			copy_assignable = CopyAssignable<Type>;
-
-			meta_text = PropertyMeta::Access::Text();
 		}
 
 		template<typename ValueType, typename Type>
@@ -159,7 +154,7 @@ namespace Mirror
 			return *(ValueType*)getter(ptr);
 		}
 
-		template<typename Type>
+		template<Mirrored Type>
 		void* GetPointer(const Type& obj) const
 		{
 			return GetPointer(obj.GetThis());
@@ -168,10 +163,10 @@ namespace Mirror
 		void* GetPointer(void* ptr) const
 		{
 			if (caster) ptr = caster(ptr);
-			return getter(ptr);
+			return pointer(ptr);
 		}
 
-		template<typename ValueType, typename Type>
+		template<typename ValueType, Mirrored Type>
 		void SetValue(Type& obj, ValueType&& value) const
 		{
 			SetValue<ValueType>(obj.GetThis(), forward<ValueType>(value));

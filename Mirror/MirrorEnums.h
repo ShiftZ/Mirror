@@ -32,7 +32,7 @@ namespace Mirror
 {
 	using namespace std;
 
-	template<typename Type>
+	template<typename Type> requires is_enum_v<Type>
 	struct Enum
 	{
 		string_view name;

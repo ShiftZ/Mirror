@@ -5,8 +5,8 @@
 #include "MirrorEnums.h"
 
 // default property and method class injection
-#define CLASS(_Type_, ...) MIRROR_CLASS(_Type_, Mirror::Property, Mirror::Method,, __VA_ARGS__)
-#define STRUCT(_Type_, ...) MIRROR_STRUCT(_Type_, Mirror::Property, Mirror::Method,, __VA_ARGS__)
+#define CLASS(_Type_, ...) MIRROR_CLASS(_Type_, Mirror::Class, Mirror::Property, Mirror::Method,, __VA_ARGS__)
+#define STRUCT(_Type_, ...) MIRROR_STRUCT(_Type_, Mirror::Class, Mirror::Property, Mirror::Method,, __VA_ARGS__)
 #define ENUM(_Type_, ...) MIRROR_ENUM(_Type_,, __VA_ARGS__)
 #define XENUM(_Type_, ...) MIRROR_ENUM_EXTERNAL(_Type_,, __VA_ARGS__)
 

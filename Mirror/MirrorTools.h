@@ -27,13 +27,13 @@ namespace Mirror
 	};
 
 	template<typename Type>
-	concept Mirrored = requires { typename Type::Class; };
+	concept Mirrored = requires { typename Type::Meta; };
 
 	template<typename Type>
 	concept StlContainer = requires (Type& c)
 	{
-		Type::iterator;
-		Type::value_type;
+		typename Type::iterator;
+		typename Type::value_type;
 		c.begin(), c.end();
 	};
 
